@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Music Widget</string>
+    <string name="widget_label">Music Widget</string>
+    <string name="widget_description">Control Apple Music, Spotify and YouTube Music from one widget.</string>
+    <string name="listener_label">Music Widget media access</string>
+
+    <string name="nothing_playing">Nothing playing</string>
+    <string name="tap_play_to_open">Tap ▶ to open %1$s</string>
+    <string name="open_a_music_app">Start a song in a music app</string>
+    <string name="widget_setup_title">Tap to set up</string>
+    <string name="widget_setup_subtitle">Allow notification access</string>
+    <string name="mode_auto">Auto</string>
+    <string name="following_auto">Following: whatever is playing</string>
+    <string name="following_app">Following: %1$s</string>
+
+    <string name="cd_play">Play</string>
+    <string name="cd_pause">Pause</string>
+    <string name="cd_next">Next</string>
+    <string name="cd_previous">Previous</string>
+    <string name="cd_shuffle">Shuffle</string>
+    <string name="cd_repeat">Repeat</string>
+    <string name="cd_lyrics">Lyrics</string>
+    <string name="cd_open_app">Open music app</string>
+    <string name="cd_album_art">Album art</string>
+    <string name="cd_switch_app">Switch music app</string>
+
+    <string name="lyrics_loading">Finding lyrics…</string>
+    <string name="lyrics_not_found">No lyrics found for this song</string>
+    <string name="lyrics_failed">Couldn\'t load lyrics. Check your internet and tap the lyrics button again.</string>
+    <string name="lyrics_nothing">Play a song to see lyrics</string>
+    <string name="lyrics_instrumental">♪ Instrumental ♪</string>
+
+    <string name="setup_title">Set up Music Widget</string>
+    <string name="step_access_title">1. Allow notification access</string>
+    <string name="step_access_body">Android shares what\'s playing (and play/pause/skip controls) only with apps that have notification access. The widget reads nothing else.</string>
+    <string name="access_granted">✓ Access granted</string>
+    <string name="access_missing">✗ Not granted yet</string>
+    <string name="btn_grant_access">Grant notification access</string>
+    <string name="restricted_note">Switch greyed out? Tap “Open app info”, then the ⋮ menu (top right) → “Allow restricted settings”, then try again. Android does this for apps installed from a file.</string>
+    <string name="btn_app_info">Open app info</string>
+    <string name="step_xiaomi_title">2. Xiaomi / HyperOS only</string>
+    <string name="step_xiaomi_body">In App info, turn ON “Autostart” and set Battery saver to “No restrictions”. Otherwise HyperOS may stop the widget from updating.</string>
+    <string name="step_apps_title">Music apps</string>
+    <string name="app_installed">✓ %1$s</string>
+    <string name="app_missing">✗ %1$s (not installed)</string>
+    <string name="step_widget_title">Add the widget</string>
+    <string name="step_widget_body">Long-press your home screen → Widgets → Music Widget. Or use the button below. Resize it by long-pressing the widget and dragging its edges.</string>
+    <string name="btn_add_widget">Add widget to home screen</string>
+    <string name="btn_open_player">Open player panel</string>
+    <string name="pin_not_supported">Your launcher can\'t add widgets this way. Long-press the home screen → Widgets instead.</string>
+    <string name="tips_title">Gestures</string>
+    <string name="tips_body">Widget: tap album art to open the player panel.\nPanel: swipe art left/right = next/previous · double-tap = play/pause · tap or swipe up = lyrics · swipe down = close · drag the bar to seek · tap a lyric line to jump there · long-press an app icon to open that app.</string>
+</resources>
