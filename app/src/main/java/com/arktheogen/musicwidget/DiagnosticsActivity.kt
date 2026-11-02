@@ -30,7 +30,10 @@ class DiagnosticsActivity : Activity() {
         findViewById<View>(R.id.btn_refresh).setOnClickListener { refresh() }
         findViewById<View>(R.id.btn_copy).setOnClickListener { copy() }
         val rows = findViewById<LinearLayout>(R.id.test_rows)
-        MusicApps.installed(this).forEach { rows.addView(testRow(it)) }
+        val installed = MusicApps.installed(this)
+        installed.forEach { rows.addView(testRow(it)) }
+        if (installed.any { it.pkg == "com.apple.android.music" } &&
+            installed.any { it.pkg == "com.google.android.apps.youtube.music" }) rows.addView(relayRow())
     }
 
     override fun onResume() {
@@ -69,6 +72,24 @@ class DiagnosticsActivity : Activity() {
         addView(Button(context).apply {
             setText(R.string.diag_link)
             setOnClickListener { Diagnostics.runHandoff(this@DiagnosticsActivity, app, Diagnostics.Method.LINK) { log(it) } }
+        })
+    }
+
+    /** YouTube Music picks, Apple Music plays. Keeps running if this screen is left. */
+    private fun relayRow() = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        addView(TextView(context).apply {
+            setText(R.string.diag_relay)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        addView(Button(context).apply {
+            setText(R.string.diag_start)
+            setOnClickListener { RelayTest.start(this@DiagnosticsActivity) { log(it) } }
+        })
+        addView(Button(context).apply {
+            setText(R.string.diag_stop)
+            setOnClickListener { RelayTest.stop("stopped by you") }
         })
     }
 

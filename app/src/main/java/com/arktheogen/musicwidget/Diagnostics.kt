@@ -76,7 +76,7 @@ object Diagnostics {
 
     fun country(): String = Locale.getDefault().country.ifBlank { "US" }
 
-    private fun sessions(ctx: Context): List<MediaController>? = try {
+    internal fun sessions(ctx: Context): List<MediaController>? = try {
         ctx.getSystemService(MediaSessionManager::class.java)
             .getActiveSessions(SessionHub.listenerComponent(ctx))
     } catch (e: SecurityException) {
@@ -158,7 +158,7 @@ object Diagnostics {
         return m.getLong(key).toString()
     }
 
-    private fun stateName(state: Int?) = when (state) {
+    internal fun stateName(state: Int?) = when (state) {
         PlaybackState.STATE_PLAYING -> "PLAYING"
         PlaybackState.STATE_PAUSED -> "PAUSED"
         PlaybackState.STATE_STOPPED -> "STOPPED"
@@ -183,7 +183,7 @@ object Diagnostics {
 
     // ================================================================ handoff test
 
-    private data class Song(
+    internal data class Song(
         val title: String,
         val artist: String,
         val album: String = "",
@@ -278,14 +278,14 @@ object Diagnostics {
         }
     }
 
-    private fun searchExtras(song: Song) = Bundle().apply {
+    internal fun searchExtras(song: Song) = Bundle().apply {
         putString(MediaStore.EXTRA_MEDIA_FOCUS, MediaStore.Audio.Media.ENTRY_CONTENT_TYPE)
         putString(MediaStore.EXTRA_MEDIA_TITLE, song.title)
         putString(MediaStore.EXTRA_MEDIA_ARTIST, song.artist)
         if (song.album.isNotBlank()) putString(MediaStore.EXTRA_MEDIA_ALBUM, song.album)
     }
 
-    private fun searchIntent(pkg: String, song: Song) =
+    internal fun searchIntent(pkg: String, song: Song) =
         Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH)
             .setPackage(pkg)
             .putExtra(SearchManager.QUERY, "${song.title} ${song.artist}".trim())
@@ -383,7 +383,7 @@ object Diagnostics {
 
     private fun norm(s: String) = s.lowercase(Locale.ROOT).filter { it.isLetterOrDigit() }
 
-    private fun verdict(a: Song, b: Song): String {
+    internal fun verdict(a: Song, b: Song): String {
         val t1 = norm(Lyrics.cleanTitle(a.title))
         val t2 = norm(Lyrics.cleanTitle(b.title))
         val titleOk = t1.isNotEmpty() && t2.isNotEmpty() && (t1.contains(t2) || t2.contains(t1))

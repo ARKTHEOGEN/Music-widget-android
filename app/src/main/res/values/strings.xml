@@ -59,6 +59,9 @@
     <string name="diag_to_app">→ %1$s</string>
     <string name="diag_search">Search</string>
     <string name="diag_link">Link</string>
+    <string name="diag_relay">Relay: YouTube Music picks → Apple Music plays</string>
+    <string name="diag_start">Start</string>
+    <string name="diag_stop">Stop</string>
     <string name="diag_refresh">Refresh</string>
     <string name="diag_copy">Copy report</string>
     <string name="diag_copied">Report copied</string>
