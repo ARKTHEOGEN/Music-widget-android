@@ -1,12 +1,15 @@
 package com.arktheogen.musicwidget
 
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.LruCache
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.io.File
 import java.io.IOException
+import java.security.MessageDigest
 import java.util.concurrent.Executors
 import kotlin.math.abs
 
@@ -28,23 +31,83 @@ object Lyrics {
     private const val SEARCH_URL = "https://lrclib.net/api/search"
     private const val DURATION_TOLERANCE_S = 3.0
 
+    private const val RETRY_DELAY_MS = 1500L
+
     private val cache = LruCache<String, Result>(32)
+    /** Found lyrics also live on disk, so each song needs LRCLIB (often busy) only once. */
+    @Volatile private var diskDir: File? = null
     private val worker = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
 
-    /** Calls [onResult] on the main thread. Results (except failures) are cached per track. */
-    fun load(key: String, title: String, artist: String, durationMs: Long, onResult: (Result) -> Unit) {
+    /**
+     * Calls [onResult] on the main thread. Results (except failures) are cached per track in memory;
+     * found lyrics are also cached on disk. "Not found" stays in memory only, as LRCLIB keeps growing.
+     */
+    fun load(ctx: Context, key: String, title: String, artist: String, durationMs: Long, onResult: (Result) -> Unit) {
         cache.get(key)?.let { onResult(it); return }
+        if (diskDir == null) diskDir = File(ctx.applicationContext.cacheDir, "lyrics")
         worker.execute {
-            val result = try {
-                fetch(cleanTitle(title), cleanArtist(artist), durationMs / 1000.0)
-            } catch (e: IOException) {
-                Result.Failed
-            } catch (e: JSONException) {
-                Result.Failed
-            }
+            val fromDisk = readDisk(key)
+            val result = fromDisk ?: fetchWithRetry(cleanTitle(title), cleanArtist(artist), durationMs / 1000.0)
             if (result != Result.Failed) cache.put(key, result)
+            if (fromDisk == null) writeDisk(key, result)
             main.post { onResult(result) }
+        }
+    }
+
+    /** LRCLIB often answers "busy" (HTTP 503); one retry after a short wait usually gets through. */
+    private fun fetchWithRetry(title: String, artist: String, durationS: Double): Result {
+        repeat(2) { attempt ->
+            try {
+                return fetch(title, artist, durationS)
+            } catch (e: IOException) {
+                if (attempt == 0) Thread.sleep(RETRY_DELAY_MS)
+            } catch (e: JSONException) {
+                return Result.Failed
+            }
+        }
+        return Result.Failed
+    }
+
+    // ---------------------------------------------------------------- disk cache
+
+    private fun diskFile(key: String): File? = diskDir?.let { dir ->
+        val hash = MessageDigest.getInstance("SHA-1").digest(key.toByteArray()).joinToString("") { "%02x".format(it) }
+        File(dir, hash)
+    }
+
+    /** File format: a type letter on the first line (S synced, P plain, I instrumental), then the body. */
+    private fun readDisk(key: String): Result? {
+        val file = diskFile(key)?.takeIf { it.exists() } ?: return null
+        val text = try {
+            file.readText()
+        } catch (e: IOException) {
+            return null
+        }
+        val body = text.substringAfter('\n', "")
+        return when (text.substringBefore('\n')) {
+            "S" -> Result.Synced(body.lineSequence().mapNotNull { row ->
+                row.substringBefore('\t').toLongOrNull()?.let { Line(it, row.substringAfter('\t', "")) }
+            }.toList())
+            "P" -> Result.Plain(body)
+            "I" -> Result.Instrumental
+            else -> null
+        }
+    }
+
+    private fun writeDisk(key: String, result: Result) {
+        val text = when (result) {
+            is Result.Synced -> "S\n" + result.lines.joinToString("\n") { "${it.timeMs}\t${it.text}" }
+            is Result.Plain -> "P\n" + result.text
+            Result.Instrumental -> "I"
+            Result.NotFound, Result.Failed -> return
+        }
+        try {
+            val file = diskFile(key) ?: return
+            file.parentFile?.mkdirs()
+            file.writeText(text)
+        } catch (e: IOException) {
+            // Cache only; the next view fetches again.
         }
     }
 

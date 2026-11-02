@@ -33,7 +33,7 @@ import kotlin.math.min
  *  - double-tap art → play / pause
  *  - tap art → lyrics on / off; swipe up → lyrics; swipe down → close
  *  - with lyrics showing, a sideways swipe still changes track
- *  - drag the bar → seek; tap a lyric line → jump there
+ *  - drag the bar → seek; with lyrics: tap → back to art, long-press a line → jump there
  */
 class PlayerPanelActivity : Activity(), SessionHub.Listener {
 
@@ -182,6 +182,7 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         })
 
         artFrame.touchFirst = ArtGestures()::handle
+        lyricsList.setOnClickListener { showLyrics(false) } // tap between lines, too
         lyricsScroll.setOnTouchListener { _, _ ->
             lastManualScroll = SystemClock.uptimeMillis()
             false
@@ -301,7 +302,7 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         if (key == lyricsKey) return
         lyricsKey = key
         lyricsMessage(R.string.lyrics_loading)
-        Lyrics.load(key, state.title, state.artist, state.durationMs) { result ->
+        Lyrics.load(this, key, state.title, state.artist, state.durationMs) { result ->
             if (key == lyricsKey && !isDestroyed) showLyricsResult(result)
         }
     }
@@ -323,7 +324,7 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
                 lineViews = result.lines.map { line ->
                     lyricLine(line.text.ifEmpty { "♪" }).apply {
                         alpha = 0.45f
-                        setOnClickListener { SessionHub.seekTo(line.timeMs) }
+                        setOnLongClickListener { SessionHub.seekTo(line.timeMs); true }
                     }.also { lyricsList.addView(it) }
                 }
                 currentLine = -1
@@ -352,8 +353,10 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         np?.let { highlightLyric(it.livePositionMs()) }
     }
 
+    /** Tap = back to the art; long-press (synced lines only) = jump there. */
     private fun lyricLine(text: String) = TextView(this).apply {
         this.text = text
+        setOnClickListener { showLyrics(false) }
         setTextColor(0xFFFFFFFF.toInt())
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
         typeface = Typeface.DEFAULT_BOLD
@@ -409,7 +412,8 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
     /**
      * Sees every touch on the art first (through [ArtFrame]).
      * Art or a lyrics message showing: all gestures are ours.
-     * Lyric lines showing: only a sideways drag is ours; scrolling and tapping a line stay with the list.
+     * Lyric lines showing: a sideways drag is ours, and so is a pull down once the list is at its top
+     * (closes the panel); scrolling and tapping a line stay with the list.
      */
     private inner class ArtGestures : GestureDetector.SimpleOnGestureListener() {
         private val detector = GestureDetector(this@PlayerPanelActivity, this)
@@ -419,6 +423,7 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         private var downY = 0f
         private var dragging = false
         private var scrolling = false
+        private var pullingDown = false
 
         /** Returns true when the gesture is ours. */
         fun handle(e: MotionEvent): Boolean {
@@ -431,13 +436,18 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
                     downY = e.rawY
                     dragging = false
                     scrolling = false
+                    pullingDown = false
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = e.rawX - downX
                     val dy = e.rawY - downY
-                    if (!dragging && !scrolling) {
+                    if (!dragging && !scrolling && !pullingDown) {
                         if (abs(dx) > slop && abs(dx) > abs(dy)) dragging = true
-                        else if (abs(dy) > slop) scrolling = true // vertical: never becomes a track swipe
+                        else if (abs(dy) > slop) {
+                            // Vertical: never becomes a track swipe. Over lines, pulling down at the top closes.
+                            if (linesShowing && dy > 0 && !lyricsScroll.canScrollVertically(-1)) pullingDown = true
+                            else scrolling = true
+                        }
                     }
                     if (dragging) {
                         v.translationX = dx
@@ -450,10 +460,13 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
                     val dy = e.rawY - downY
                     val up = e.actionMasked == MotionEvent.ACTION_UP
                     val wasDragging = dragging
+                    val wasPulling = pullingDown
                     dragging = false
+                    pullingDown = false
                     when {
                         wasDragging && up && abs(dx) > v.width * 0.25f -> swipeTrack(v, toNext = dx < 0)
                         wasDragging -> springBack(v)
+                        wasPulling -> if (up && dy > swipeDistance) close()
                         linesShowing -> return false
                         up && abs(dy) > abs(dx) && dy > swipeDistance -> close()
                         up && abs(dy) > abs(dx) && -dy > swipeDistance -> showLyrics(true)
@@ -461,7 +474,7 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
                     return true
                 }
             }
-            return dragging || !linesShowing
+            return dragging || pullingDown || !linesShowing
         }
 
         override fun onDown(e: MotionEvent) = true
