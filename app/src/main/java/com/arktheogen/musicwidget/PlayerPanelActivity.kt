@@ -105,6 +105,7 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         super.onStop()
         SessionHub.removeListener(this)
         ticker.removeCallbacks(tick)
+        ticker.removeCallbacks(retryLyrics)
     }
 
     // ---------------------------------------------------------------- setup
@@ -291,7 +292,11 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         lyricsScroll.visibility = if (lyricsVisible && message == null) View.VISIBLE else View.GONE
     }
 
+    /** LRCLIB was busy: try again while the lyrics stay open (stopped in onStop). */
+    private val retryLyrics = Runnable { if (lyricsVisible && !isDestroyed) loadLyrics() }
+
     private fun loadLyrics() {
+        ticker.removeCallbacks(retryLyrics)
         val state = np ?: return
         if (!state.hasSession || state.title.isBlank()) {
             lyricsKey = null
@@ -339,6 +344,11 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
             }
             Lyrics.Result.Instrumental -> lyricsMessage(R.string.lyrics_instrumental)
             Lyrics.Result.NotFound -> lyricsMessage(R.string.lyrics_not_found)
+            Lyrics.Result.Busy -> {
+                lyricsMessage(R.string.lyrics_busy)
+                lyricsKey = null
+                ticker.postDelayed(retryLyrics, BUSY_RETRY_MS)
+            }
             Lyrics.Result.Failed -> {
                 lyricsMessage(R.string.lyrics_failed)
                 lyricsKey = null // allow retry on next tap
@@ -493,5 +503,6 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
 
     companion object {
         const val EXTRA_SHOW_LYRICS = "show_lyrics"
+        private const val BUSY_RETRY_MS = 20_000L
     }
 }

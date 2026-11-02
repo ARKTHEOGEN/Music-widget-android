@@ -5,6 +5,9 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
+/** The server answered, but not with 200 OK (for example 503 busy). */
+class HttpStatusException(val code: Int) : IOException("HTTP $code")
+
 /** Tiny blocking HTTP GET for background threads (lyrics, song-link lookups). */
 object Http {
     private const val USER_AGENT = "MusicWidget/0.2 (https://github.com/ARKTHEOGEN/Music-widget-android)"
@@ -16,7 +19,7 @@ object Http {
         conn.readTimeout = TIMEOUT_MS
         conn.setRequestProperty("User-Agent", USER_AGENT)
         try {
-            if (conn.responseCode != HttpURLConnection.HTTP_OK) throw IOException("HTTP ${conn.responseCode}")
+            if (conn.responseCode != HttpURLConnection.HTTP_OK) throw HttpStatusException(conn.responseCode)
             return conn.inputStream.bufferedReader().use { it.readText() }
         } finally {
             conn.disconnect()

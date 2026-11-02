@@ -27,6 +27,7 @@
 
     <string name="lyrics_loading">Finding lyrics…</string>
     <string name="lyrics_not_found">No lyrics found for this song</string>
+    <string name="lyrics_busy">The lyrics service (LRCLIB) is busy. Trying again every 20 seconds…</string>
     <string name="lyrics_failed">Couldn\'t load lyrics. Check your internet and tap the lyrics button again.</string>
     <string name="lyrics_nothing">Play a song to see lyrics</string>
     <string name="lyrics_instrumental">♪ Instrumental ♪</string>

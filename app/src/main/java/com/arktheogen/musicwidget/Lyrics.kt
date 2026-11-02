@@ -25,6 +25,8 @@ object Lyrics {
         data class Plain(val text: String) : Result
         data object Instrumental : Result
         data object NotFound : Result
+        /** LRCLIB answered "busy" (HTTP 503 / 429): worth retrying soon. */
+        data object Busy : Result
         data object Failed : Result
     }
 
@@ -49,7 +51,7 @@ object Lyrics {
         worker.execute {
             val fromDisk = readDisk(key)
             val result = fromDisk ?: fetchWithRetry(cleanTitle(title), cleanArtist(artist), durationMs / 1000.0)
-            if (result != Result.Failed) cache.put(key, result)
+            if (result != Result.Failed && result != Result.Busy) cache.put(key, result)
             if (fromDisk == null) writeDisk(key, result)
             main.post { onResult(result) }
         }
@@ -57,16 +59,18 @@ object Lyrics {
 
     /** LRCLIB often answers "busy" (HTTP 503); one retry after a short wait usually gets through. */
     private fun fetchWithRetry(title: String, artist: String, durationS: Double): Result {
+        var busy = false
         repeat(2) { attempt ->
             try {
                 return fetch(title, artist, durationS)
             } catch (e: IOException) {
+                busy = e is HttpStatusException && (e.code == 503 || e.code == 429)
                 if (attempt == 0) Thread.sleep(RETRY_DELAY_MS)
             } catch (e: JSONException) {
                 return Result.Failed
             }
         }
-        return Result.Failed
+        return if (busy) Result.Busy else Result.Failed
     }
 
     // ---------------------------------------------------------------- disk cache
@@ -100,7 +104,7 @@ object Lyrics {
             is Result.Synced -> "S\n" + result.lines.joinToString("\n") { "${it.timeMs}\t${it.text}" }
             is Result.Plain -> "P\n" + result.text
             Result.Instrumental -> "I"
-            Result.NotFound, Result.Failed -> return
+            Result.NotFound, Result.Busy, Result.Failed -> return
         }
         try {
             val file = diskFile(key) ?: return
