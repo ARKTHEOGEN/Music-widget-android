@@ -6,6 +6,7 @@ import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -46,6 +47,9 @@ object Relay {
     /** Fast test: each song is jumped to this far before its end. */
     private const val FAST_TAIL_MS = 25_000L
     private const val REFILL_WAIT_MS = 4_000L
+    /** Apple Music's own Autoplay button, offered to other apps through its session. */
+    private const val AUTOPLAY = "com.apple.android.music.playback.action.ACTION_ENABLE_CONTINUOUS_PLAYBACK"
+    private const val AUTOPLAY_ARG = "${AUTOPLAY}_ARG_ENABLED"
 
     private enum class Via { MEDIA_ID, SEARCH, PREPARE }
 
@@ -80,6 +84,9 @@ object Relay {
     private var endsAt = 0L
     private var lastRefillId = -1L
     private var refilling = false
+    private var autoplayAsked = false
+    /** We switched Apple Music's autoplay off, so switch it back on when the relay stops. */
+    private var autoplayChanged = false
 
     /** Lines also go to [sink] (the diagnostics screen) while it's open. */
     fun setUi(sink: ((String) -> Unit)?) {
@@ -138,6 +145,8 @@ object Relay {
         isOn = false
         main.removeCallbacksAndMessages(null)
         refilling = false
+        restoreAutoplay()
+        autoplayAsked = false
         am?.unregisterCallback(appleCallback)
         am = null
         pendingIdx = -1
@@ -164,8 +173,8 @@ object Relay {
             am?.unregisterCallback(appleCallback)
             am = s
             s.registerCallback(appleCallback, main)
-            logAutoplay(s)
         }
+        if (isOn && !autoplayAsked) autoplayOff(s)
         return s.playbackState?.state.let { it != null && it != PlaybackState.STATE_NONE }
     }
 
@@ -463,6 +472,7 @@ object Relay {
             am?.transportControls?.seekTo(dur - FAST_TAIL_MS)
             log("[${idx + 1}] fast test: jumped to ${formatTime(dur - FAST_TAIL_MS)}")
         }
+        if (!autoplayAsked) am?.let { autoplayOff(it) }
         scheduleTimers()
         // Look up the next song now, so the handoff needs no network.
         if (pos + 1 < items.size) withApple(pos + 1) {}
@@ -485,16 +495,34 @@ object Relay {
     }
 
     /**
-     * Apple Music offers an "Autoplay" button to other apps. Turning it off would stop its own
-     * autoplay racing our next pick, but pressing it blind could turn it on, so first we log
-     * what it reports (its extras and icon may say whether it's on).
+     * Apple Music's autoplay starts its own next song when ours ends, racing our pick (relay
+     * run 1). Its session offers an Autoplay button with an "enabled" argument (relay badge
+     * test: it reported enabled=false). We send enabled=false and read the button again: if
+     * it changed, autoplay was on and is now off, and [restoreAutoplay] puts it back.
      */
-    private fun logAutoplay(c: MediaController) {
-        val a = c.playbackState?.customActions?.firstOrNull { it.name?.toString().equals("Autoplay", true) }
-            ?: return log("Apple Music: no Autoplay button")
-        val extras = a.extras?.let { b -> b.keySet().joinToString { k -> "$k=${b.get(k)}" } } ?: "none"
-        log("Apple Music Autoplay button: action=${a.action}, icon=${a.icon}, extras: $extras")
+    private fun autoplayOff(c: MediaController) {
+        val before = autoplayArg(c) ?: return // no button until a song is loaded; tried again when ours starts
+        autoplayAsked = true
+        c.transportControls.sendCustomAction(AUTOPLAY, Bundle().apply { putBoolean(AUTOPLAY_ARG, false) })
+        main.postDelayed({
+            val after = am?.let { autoplayArg(it) }
+            autoplayChanged = after != null && after != before
+            log("Apple Music autoplay: sent enabled=false; button said $before, now $after → " +
+                if (autoplayChanged) "switched off (back on when the relay stops)" else "no change (already off, or ignored)")
+        }, 1_500)
     }
+
+    private fun restoreAutoplay() {
+        if (!autoplayChanged) return
+        autoplayChanged = false
+        val c = am ?: return
+        c.transportControls.sendCustomAction(AUTOPLAY, Bundle().apply { putBoolean(AUTOPLAY_ARG, true) })
+        log("Apple Music autoplay: switched back on")
+    }
+
+    /** The button's "enabled" argument, or null when Apple Music doesn't offer the button. */
+    private fun autoplayArg(c: MediaController): Boolean? =
+        c.playbackState?.customActions?.firstOrNull { it.action == AUTOPLAY }?.extras?.getBoolean(AUTOPLAY_ARG)
 
     private fun positionNow(s: PlaybackState): Long {
         if (s.state != PlaybackState.STATE_PLAYING) return s.position
