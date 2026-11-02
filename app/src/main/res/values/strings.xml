@@ -51,4 +51,15 @@
     <string name="pin_not_supported">Your launcher can\'t add widgets this way. Long-press the home screen → Widgets instead.</string>
     <string name="tips_title">Gestures</string>
     <string name="tips_body">Widget: tap album art to open the player panel.\nPanel: swipe art left/right = next/previous · double-tap = play/pause · tap or swipe up = lyrics · swipe down = close · drag the bar to seek · tap a lyric line to jump there · long-press an app icon to open that app.</string>
+
+    <string name="btn_diagnostics">Diagnostics (test what each app supports)</string>
+    <string name="diag_title">Diagnostics</string>
+    <string name="diag_help">1. Play a song in one music app.\n2. Come back here and tap Search or Link for each OTHER app. Each test pauses the song, starts it in that app, and checks the result. Come back here after each test.\n3. Repeat with a song playing in each app.\n4. Tap Copy report and paste it to Claude.</string>
+    <string name="diag_tests_heading">Handoff tests</string>
+    <string name="diag_to_app">→ %1$s</string>
+    <string name="diag_search">Search</string>
+    <string name="diag_link">Link</string>
+    <string name="diag_refresh">Refresh</string>
+    <string name="diag_copy">Copy report</string>
+    <string name="diag_copied">Report copied</string>
 </resources>

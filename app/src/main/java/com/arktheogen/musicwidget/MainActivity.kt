@@ -32,6 +32,9 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.btn_open_player).setOnClickListener {
             startActivity(Intent(this, PlayerPanelActivity::class.java))
         }
+        findViewById<View>(R.id.btn_diagnostics).setOnClickListener {
+            startActivity(Intent(this, DiagnosticsActivity::class.java))
+        }
         val brand = "${Build.MANUFACTURER} ${Build.BRAND}".lowercase()
         if (listOf("xiaomi", "redmi", "poco").any { it in brand }) {
             findViewById<View>(R.id.xiaomi_section).visibility = View.VISIBLE

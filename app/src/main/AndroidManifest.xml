@@ -36,6 +36,10 @@
             android:theme="@style/Theme.MusicWidget.Panel" />
 
         <activity
+            android:name=".DiagnosticsActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".SwitchActivity"
             android:excludeFromRecents="true"
             android:exported="false"

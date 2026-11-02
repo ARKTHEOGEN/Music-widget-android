@@ -7,9 +7,6 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
 import java.util.concurrent.Executors
 import kotlin.math.abs
 
@@ -29,7 +26,6 @@ object Lyrics {
     }
 
     private const val SEARCH_URL = "https://lrclib.net/api/search"
-    private const val USER_AGENT = "MusicWidget/0.1 (https://github.com/ARKTHEOGEN/Music-widget-android)"
     private const val DURATION_TOLERANCE_S = 3.0
 
     private val cache = LruCache<String, Result>(32)
@@ -72,18 +68,8 @@ object Lyrics {
     }
 
     private fun search(query: String): List<JSONObject> {
-        val conn = URL("$SEARCH_URL?$query").openConnection() as HttpURLConnection
-        conn.connectTimeout = 8000
-        conn.readTimeout = 8000
-        conn.setRequestProperty("User-Agent", USER_AGENT)
-        try {
-            if (conn.responseCode != HttpURLConnection.HTTP_OK) throw IOException("HTTP ${conn.responseCode}")
-            val body = conn.inputStream.bufferedReader().use { it.readText() }
-            val arr = JSONArray(body)
-            return List(arr.length()) { arr.getJSONObject(it) }
-        } finally {
-            conn.disconnect()
-        }
+        val arr = JSONArray(Http.get("$SEARCH_URL?$query"))
+        return List(arr.length()) { arr.getJSONObject(it) }
     }
 
     // ---------------------------------------------------------------- parsing
@@ -124,7 +110,7 @@ object Lyrics {
     fun cleanArtist(a: String): String =
         a.removeSuffix(" - Topic").split(",", " & ", " feat", " ft.").first().trim().ifEmpty { a }
 
-    private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
+    private fun enc(s: String) = Http.enc(s)
 
     /** org.json returns the text "null" for JSON nulls; treat those and blanks as missing. */
     private fun JSONObject.str(name: String): String? =
