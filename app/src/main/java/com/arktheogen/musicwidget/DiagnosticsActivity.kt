@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.os.Bundle
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -11,8 +12,13 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 
-/** Shows the diagnostics report and runs handoff tests. Results stay until the screen is closed. */
+/**
+ * Shows the diagnostics report and runs handoff tests. Results stay until the screen is closed.
+ * Every report and test line also goes to logcat: adb logcat -s MusicWidgetDiag
+ */
 class DiagnosticsActivity : Activity() {
+    private companion object { const val TAG = "MusicWidgetDiag" }
+
     private lateinit var reportView: TextView
     private val testLog = StringBuilder()
     private var probe = ""
@@ -34,6 +40,8 @@ class DiagnosticsActivity : Activity() {
 
     private fun refresh() {
         probe = Diagnostics.report(this)
+        // One logcat entry per line: logcat cuts single entries at about 4 KB.
+        probe.lineSequence().forEach { Log.i(TAG, "report: $it") }
         render()
     }
 
@@ -42,6 +50,7 @@ class DiagnosticsActivity : Activity() {
     }
 
     private fun log(line: String) {
+        Log.i(TAG, "test: $line")
         testLog.append('\n').append(line)
         render()
     }

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: lets adb open the diagnostics screen directly.
+     adb shell am start -n com.arktheogen.musicwidget/.DiagnosticsActivity -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <activity
+            android:name=".DiagnosticsActivity"
+            android:exported="true"
+            tools:replace="android:exported" />
+    </application>
+</manifest>
