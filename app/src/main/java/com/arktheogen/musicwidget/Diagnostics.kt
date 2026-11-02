@@ -74,8 +74,6 @@ object Diagnostics {
     private val worker = Executors.newSingleThreadExecutor()
     private var running = false
 
-    fun country(): String = Locale.getDefault().country.ifBlank { "US" }
-
     internal fun sessions(ctx: Context): List<MediaController>? = try {
         ctx.getSystemService(MediaSessionManager::class.java)
             .getActiveSessions(SessionHub.listenerComponent(ctx))
@@ -88,7 +86,7 @@ object Diagnostics {
     fun report(ctx: Context): String = buildString {
         appendLine("Music Widget diagnostics v${versionOf(ctx, ctx.packageName)}")
         appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})")
-        appendLine("Country: ${country()}")
+        appendLine("Country: ${AppleCatalog.country(ctx).uppercase(Locale.ROOT)} (SIM network; phone language region ${Locale.getDefault().country})")
         appendLine("Notification access: ${if (SessionHub.hasAccess(ctx)) "granted" else "MISSING"}")
         appendLine()
         appendLine("== Apps ==")
@@ -249,7 +247,7 @@ object Diagnostics {
             Method.LINK -> worker.execute {
                 var error: String? = null
                 val url = try {
-                    findLink(target, song)
+                    findLink(appCtx, target, song)
                 } catch (e: IOException) {
                     error = e.message
                     null
@@ -309,8 +307,8 @@ object Diagnostics {
     }
 
     /** Background thread: iTunes Search for the Apple link, then Song.link for the others. */
-    private fun findLink(target: MusicApp, song: Song): String? {
-        val cc = country()
+    private fun findLink(ctx: Context, target: MusicApp, song: Song): String? {
+        val cc = AppleCatalog.country(ctx)
         val term = Http.enc("${Lyrics.cleanTitle(song.title)} ${Lyrics.cleanArtist(song.artist)}")
         val json = JSONObject(Http.get("https://itunes.apple.com/search?term=$term&entity=song&limit=10&country=$cc"))
         val results = json.optJSONArray("results") ?: return null
