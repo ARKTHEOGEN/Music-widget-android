@@ -97,6 +97,15 @@ Each test pauses the source app, waits up to 15 s for the target to play, grades
   - Song 2 race: our pick arrived after Apple Music's own autoplay had started its next song ("Money in the Bank"); our pick then replaced it. The test mistook the autoplay song for ours. Fix: confirm by title, and hand over earlier or pause Apple Music before its autoplay.
   - `skipToQueueItem` on a paused YouTube Music **makes it start playing** after 1.3–2.3 s; the test paused it. Need a quieter way to move its place.
   - YouTube Music's list **shrank** (16 → 13) with **no new picks** over 3 steps. Unknown whether it refills near the end of the list.
+- **Relay runs 2–3:** moving YouTube Music's place (`skipToQueueItem`) made it play and take the speaker, pausing Apple Music. Apple Music's own search, given loose words, sometimes picked a different song ("Minnalae" → "Minnale Nee Vanthathenadi").
+- **Relay v3 (`b908049`), 12 songs: the design to build on.** YouTube Music read only (paused once, never moved); Apple song chosen by us via iTunes Search (`AppleCatalog.kt`, country from the SIM network = `in`), handed over by ID.
+  - **10 of 10 songs Apple Music has played EXACT via `playFromMediaId(trackId)`**, 4.1–5.7 s after the request. The URI and search fallbacks were never needed.
+  - Catalogue lookup ≈ 0.5 s per song; matches are saved (SharedPreferences `apple_matches`).
+  - YouTube Music stayed silent all run.
+  - "Oh Senyoreeta" (P. Unnikrishnan): not found in Apple's catalogue; skipped. Likely a spelling variant.
+  - "Rasika Rasika" matched **"Rasika Rasika (Remix)"** (wrong version); `media_id` didn't start it within 6 s. The rest of that song's log was lost (USB dropped and the phone's log buffer was cleared).
+  - YouTube Music's list **stayed at 25** while only read: it adds no picks unless it moves. Refill needs a design.
+  - Open: the 4–6 s gap per song; penalise Remix/Live/alternate versions unless the YouTube title has them; a looser second lookup for spelling variants.
 
 **Open questions the report must answer:**
 1. Does **Apple Music on Android** accept play-from-search (intent or session)?
