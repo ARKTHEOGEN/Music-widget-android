@@ -15,7 +15,7 @@ Everything a new Claude Code session needs to continue this project. Read this f
 
 ## 2. Goal
 
-One home-screen widget on a **Pixel 7 Pro** (Android 16) and a **Xiaomi Pad 7 Pro** (HyperOS) that controls **Apple Music, Spotify and YouTube Music**, with:
+One home-screen widget on a **Pixel 7 Pro** (Android 17 beta, SDK 37) and a **Xiaomi Pad 7 Pro** (HyperOS) that controls **Apple Music, Spotify and YouTube Music**, with:
 - a switch between the three apps
 - swipe gestures, seek, next/previous, shuffle, repeat
 - lyrics
@@ -34,6 +34,8 @@ Their inspiration videos couldn't be watched (YouTube was blocked from the cloud
 | Next step | Run a **diagnostics test build** first, then build Feature 1 (handoff) on proven methods. |
 | Feature 2 | Decide *after* the diagnostics results. |
 | Handoff with no exact match | Play the **closest** version and show a "closest match" note. |
+| Apps not installed | **Hide them everywhere** (widget chips, panel chips, setup screen, diagnostics test rows). Done in `344c054`. |
+| Swipe on the widget itself | Owner wants it. Slide-bar test **failed** (see section 5). Next candidate: up-next card deck (StackView, vertical flick + tap to play). Not decided yet. |
 
 ## 4. What's built (status: compiles in CI; widget confirmed working on the Pixel)
 
@@ -63,7 +65,10 @@ v0.1 worked on the Pixel: after granting access, the widget showed the playing s
 1. **Pixel has Advanced Protection on.** It blocked "Allow restricted settings". The owner turned it off briefly to finish setup.
 2. **Wrong screen trap:** App info → Notifications says "This app doesn't send notifications" (greyed out). That is *not* the access screen. The correct path is the in-app **Grant notification access** button, or **Settings → Apps → Special app access → Device & app notifications → Music Widget**. On that screen: tap the greyed switch once, then App info → ⋮ → **Allow restricted settings**, then turn the switch on.
 3. **Every CI build has a new signing key**, so each update needs an uninstall first, and access must be granted again. The permanent fix is in README → "Keep updates installable". It's still pending.
-4. Cloud sessions can't reach the owner's computer, and **Remote Control is disabled on their plan**. That's why this work moves to a local session.
+4. **Local setup on the owner's Mac (done 2026-11-02):** project at `~/Documents/AI Chats Vault/Claude/Music Widget`. Android SDK at `~/Library/Android/sdk` (path in git-ignored `local.properties`). Android Studio's bundled Java is 25, too new for Gradle 8.14, so builds use Homebrew **Java 21**: `JAVA_HOME=/opt/homebrew/opt/openjdk@21 ./gradlew assembleDebug`. Shell profile edits were blocked; set `JAVA_HOME` per command. `gh` is installed and signed in as ARKTHEOGEN, so pushes work. `adb` is not on PATH: use `~/Library/Android/sdk/platform-tools/adb`. The work network is slow for big downloads (first build took 8 min).
+5. **Pixel serial `2B041FDH300BL5`.** Local debug build installed, notification access granted over adb. Installed players: Apple Music 7.0.0, YouTube Music 9.43.52. **Spotify is not installed.** Phone locale country reports **US** (affects the iTunes Search storefront in the Link test; owner may be in India — not yet confirmed).
+6. **Widget swipe test (Slide test probe, removed after):** two `Switch` views styled as bars, using `setOnCheckedChangeResponse`. Result on the Pixel launcher: **the thumb can't be dragged**; a sideways drag changes the home-screen page. Only taps flip the switch. Conclusion: no horizontal gesture reaches a widget on the Pixel launcher.
+7. Cloud sessions can't reach the owner's computer, and **Remote Control is disabled on their plan**. That's why this work moves to a local session.
 
 ## 6. Current task: run the diagnostics (v0.2)
 
@@ -79,6 +84,13 @@ v0.1 worked on the Pixel: after granting access, the widget showed the playing s
 - **Link:** iTunes Search (`itunes.apple.com/search`, country taken from the phone's locale) finds the Apple Music link. For Spotify or YouTube Music, Song.link (`api.song.link/v1-alpha.1/links`) maps it to theirs. The link is then opened in the target app.
 
 Each test pauses the source app, waits up to 15 s for the target to play, grades the match as **EXACT / CLOSE / MISMATCH** (title, artist, length within ±3 s), then checks a seek to the same position (±4 s).
+
+**Results so far (2026-11-02, YouTube Music → Apple Music only):**
+- Static report: Apple Music and YouTube Music both accept the play-from-search intent and both open their own song links. Both sessions list `play_from_search`.
+- **YouTube Music shares its up-next queue** (23 items readable). **Apple Music does not.** Feature 2 Option A is technically possible.
+- **Search via Apple Music's session failed:** Apple Music was idle and frozen by Android (`state=NONE`, log shows "unfroze com.apple.android.music"); it ignored the command. A sleeping Apple Music must be launched, not just sent a session command. Retry with Apple Music force-stopped (so the intent path is used) is **pending**.
+- Link test: **not run yet** (taps landed while the Search test was still running).
+- Reverse direction (Apple Music → YouTube Music): not run yet.
 
 **Open questions the report must answer:**
 1. Does **Apple Music on Android** accept play-from-search (intent or session)?
@@ -98,7 +110,7 @@ Each test pauses the source app, waits up to 15 s for the target to play, grades
 5. Grant access without the settings screens:
    `adb shell cmd notification allow_listener com.arktheogen.musicwidget/com.arktheogen.musicwidget.MediaListenerService`
 6. Raw session facts, no app needed (a good cross-check): `adb shell dumpsys media_session`
-7. **Suggested first code change:** also write the report and each test-log line to logcat (for example tag `MusicWidgetDiag`), so the session can read results with `adb logcat -s MusicWidgetDiag` instead of the owner copying and pasting. Note that `DiagnosticsActivity` is `exported=false`, so `adb shell am start` can't open it. Either open it from the app, or mark it exported in debug builds only.
+7. **Done (`ddbbe04`):** write the report and each test-log line to logcat (for example tag `MusicWidgetDiag`), so the session reads results with `adb logcat -s MusicWidgetDiag`. Debug builds export `DiagnosticsActivity`: `adb shell am start -n com.arktheogen.musicwidget/.DiagnosticsActivity`.
 8. The owner plays a song in one app. Run Search and Link tests to each other app. Repeat with each app as the source. Collect the report.
 
 ## 7. After the diagnostics
