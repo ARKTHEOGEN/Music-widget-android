@@ -21,10 +21,11 @@ import java.util.Locale
 object RelayTest {
     private const val YT = "com.google.android.apps.youtube.music"
     private const val AM = "com.apple.android.music"
-    private const val SONGS = 3
+    private const val SONGS = 12
     private const val TAIL_MS = 15_000L
     private const val START_TIMEOUT_MS = 15_000L
-    private const val HANDOFF_EARLY_MS = 700L
+    /** Send the next pick this early: 0.7 s let Apple Music's own autoplay win (run 1). */
+    private const val HANDOFF_EARLY_MS = 2_000L
     private const val YT_WATCH_MS = 3_000L
 
     private val main = Handler(Looper.getMainLooper())
@@ -35,6 +36,7 @@ object RelayTest {
     private var expected = Diagnostics.Song("", "")
     private var playingTitle = ""
     private var requestedAt = 0L
+    private var interim = ""
     private var seenIds = setOf<Long>()
 
     fun start(activity: Activity, log: (String) -> Unit) {
@@ -111,6 +113,8 @@ object RelayTest {
     private fun advanceYouTube(item: MediaSession.QueueItem) {
         val yt = session(YT) ?: return
         yt.transportControls.skipToQueueItem(item.queueId)
+        // Run 1: moving its place made YouTube Music start playing after 1.3-2.3 s. Pause straight away.
+        yt.transportControls.pause()
         val sentAt = SystemClock.elapsedRealtime()
         var autoPlayedAfter = -1L
         val check = object : Runnable {
@@ -137,14 +141,22 @@ object RelayTest {
         main.postDelayed(check, 250)
     }
 
+    /** Started = playing AND the title matches our pick (run 1 mistook Apple's autoplay song for ours). */
     private fun waitForStart() {
         if (!running) return
-        val state = session(AM)?.playbackState?.state
-        if (state == PlaybackState.STATE_PLAYING) {
-            val secs = (SystemClock.elapsedRealtime() - requestedAt) / 1000.0
-            // Give Apple Music a moment to publish the new song's details.
-            main.postDelayed({ confirm(secs) }, 1500)
-            return
+        val am = session(AM)
+        val got = am?.let { Diagnostics.Song.from(it) }
+        if (am?.playbackState?.state == PlaybackState.STATE_PLAYING && got != null) {
+            if (!Diagnostics.verdict(expected, got).startsWith("MISMATCH")) {
+                val secs = (SystemClock.elapsedRealtime() - requestedAt) / 1000.0
+                interim = ""
+                main.postDelayed({ confirm(secs) }, 1000) // let the details settle
+                return
+            }
+            if (got.title != interim && got.title != playingTitle) {
+                interim = got.title
+                log("      meanwhile Apple Music plays \"${got.title}\" (not our pick)")
+            }
         }
         if (SystemClock.elapsedRealtime() - requestedAt > START_TIMEOUT_MS) return stop("Apple Music did not start song $step within 15 s")
         main.postDelayed(::waitForStart, 500)

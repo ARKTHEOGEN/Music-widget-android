@@ -33,7 +33,7 @@ import kotlin.math.min
  *  - double-tap art → play / pause
  *  - tap art → lyrics on / off; swipe up → lyrics; swipe down → close
  *  - with lyrics showing, a sideways swipe still changes track
- *  - drag the bar → seek; with lyrics: tap → back to art, long-press a line → jump there
+ *  - drag the bar → seek; with lyrics: tap a synced line → jump there, tap anywhere else → back to art
  */
 class PlayerPanelActivity : Activity(), SessionHub.Listener {
 
@@ -183,7 +183,9 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         })
 
         artFrame.touchFirst = ArtGestures()::handle
-        lyricsList.setOnClickListener { showLyrics(false) } // tap between lines, too
+        // Tap anywhere around the lines (sides, gaps, empty space) → back to the art.
+        lyricsScroll.isFillViewport = true
+        lyricsList.setOnClickListener { showLyrics(false) }
         lyricsScroll.setOnTouchListener { _, _ ->
             lastManualScroll = SystemClock.uptimeMillis()
             false
@@ -329,7 +331,7 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
                 lineViews = result.lines.map { line ->
                     lyricLine(line.text.ifEmpty { "♪" }).apply {
                         alpha = 0.45f
-                        setOnLongClickListener { SessionHub.seekTo(line.timeMs); true }
+                        setOnClickListener { SessionHub.seekTo(line.timeMs) }
                     }.also { lyricsList.addView(it) }
                 }
                 currentLine = -1
@@ -363,8 +365,12 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         np?.let { highlightLyric(it.livePositionMs()) }
     }
 
-    /** Tap = back to the art; long-press (synced lines only) = jump there. */
+    /**
+     * Only as wide as its text, so taps beside a line reach the list (→ back to the art).
+     * Tap = back to the art; synced lines replace this with "jump there".
+     */
     private fun lyricLine(text: String) = TextView(this).apply {
+        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         this.text = text
         setOnClickListener { showLyrics(false) }
         setTextColor(0xFFFFFFFF.toInt())
