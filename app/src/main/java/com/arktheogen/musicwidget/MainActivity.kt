@@ -45,9 +45,9 @@ class MainActivity : Activity() {
         super.onResume()
         val granted = SessionHub.hasAccess(this)
         accessStatus.setText(if (granted) R.string.access_granted else R.string.access_missing)
-        appsStatus.text = MusicApps.ALL.joinToString("\n") { app ->
-            getString(if (MusicApps.isInstalled(this, app.pkg)) R.string.app_installed else R.string.app_missing, app.label)
-        }
+        val installed = MusicApps.installed(this)
+        appsStatus.text = if (installed.isEmpty()) getString(R.string.no_apps)
+        else installed.joinToString("\n") { getString(R.string.app_installed, it.label) }
         SessionHub.ensureStarted(this)
         WidgetRenderer.renderAll(this, force = true)
     }

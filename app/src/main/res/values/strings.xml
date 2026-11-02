@@ -43,7 +43,7 @@
     <string name="step_xiaomi_body">In App info, turn ON “Autostart” and set Battery saver to “No restrictions”. Otherwise HyperOS may stop the widget from updating.</string>
     <string name="step_apps_title">Music apps</string>
     <string name="app_installed">✓ %1$s</string>
-    <string name="app_missing">✗ %1$s (not installed)</string>
+    <string name="no_apps">No supported music app installed. Install Apple Music, Spotify or YouTube Music.</string>
     <string name="step_widget_title">Add the widget</string>
     <string name="step_widget_body">Long-press your home screen → Widgets → Music Widget. Or use the button below. Resize it by long-pressing the widget and dragging its edges.</string>
     <string name="btn_add_widget">Add widget to home screen</string>

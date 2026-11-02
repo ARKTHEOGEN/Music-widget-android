@@ -157,9 +157,9 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         chipAuto.setOnClickListener { SessionHub.select(this, SessionHub.AUTO) }
         MusicApps.ALL.forEachIndexed { i, app ->
             val chip = chips[i]
-            val icon = MusicApps.icon(this, app.pkg)
-            if (icon != null) chip.setImageDrawable(icon) else chip.setImageResource(R.drawable.ic_music_note)
-            chip.alpha = if (icon != null) 1f else 0.35f
+            val icon = MusicApps.icon(this, app.pkg) // null = not installed: hide its chip
+            chip.visibility = if (icon != null) View.VISIBLE else View.GONE
+            chip.setImageDrawable(icon)
             chip.contentDescription = app.label
             chip.setOnClickListener { SessionHub.select(this, app.pkg) }
             chip.setOnLongClickListener { SessionHub.openApp(this, app.pkg) }

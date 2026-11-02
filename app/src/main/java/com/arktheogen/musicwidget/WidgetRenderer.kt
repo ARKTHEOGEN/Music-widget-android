@@ -96,9 +96,10 @@ object WidgetRenderer {
         v.setInt(R.id.chip_auto, "setBackgroundResource", if (np.mode == SessionHub.AUTO) R.drawable.chip_selected else 0)
         MusicApps.ALL.forEachIndexed { i, app ->
             val id = CHIP_IDS[i]
-            val icon = appIcon(ctx, app.pkg)
-            if (icon != null) v.setImageViewBitmap(id, icon) else v.setImageViewResource(id, R.drawable.ic_music_note)
-            v.setInt(id, "setImageAlpha", if (icon != null) 255 else 90)
+            val icon = appIcon(ctx, app.pkg) // null = not installed: hide its chip
+            v.setViewVisibility(id, if (icon != null) View.VISIBLE else View.GONE)
+            if (icon == null) return@forEachIndexed
+            v.setImageViewBitmap(id, icon)
             v.setInt(id, "setBackgroundResource", if (np.mode == app.pkg) R.drawable.chip_selected else 0)
         }
 

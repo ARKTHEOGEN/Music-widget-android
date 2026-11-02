@@ -30,7 +30,7 @@ class DiagnosticsActivity : Activity() {
         findViewById<View>(R.id.btn_refresh).setOnClickListener { refresh() }
         findViewById<View>(R.id.btn_copy).setOnClickListener { copy() }
         val rows = findViewById<LinearLayout>(R.id.test_rows)
-        MusicApps.ALL.forEach { rows.addView(testRow(it)) }
+        MusicApps.installed(this).forEach { rows.addView(testRow(it)) }
     }
 
     override fun onResume() {
