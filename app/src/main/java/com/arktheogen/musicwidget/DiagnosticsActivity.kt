@@ -33,12 +33,18 @@ class DiagnosticsActivity : Activity() {
         val installed = MusicApps.installed(this)
         installed.forEach { rows.addView(testRow(it)) }
         if (installed.any { it.pkg == "com.apple.android.music" } &&
-            installed.any { it.pkg == "com.google.android.apps.youtube.music" }) rows.addView(relayRow())
+            installed.any { it.pkg == "com.google.android.apps.youtube.music" }) rows.addView(relayRows())
     }
 
     override fun onResume() {
         super.onResume()
         refresh() // coming back from a music app: show its new state
+        Relay.setUi { show(it) }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Relay.setUi(null) // the relay keeps logging to logcat
     }
 
     private fun refresh() {
@@ -54,6 +60,11 @@ class DiagnosticsActivity : Activity() {
 
     private fun log(line: String) {
         Log.i(TAG, "test: $line")
+        show(line)
+    }
+
+    /** On screen only (the relay writes its own logcat lines). */
+    private fun show(line: String) {
         testLog.append('\n').append(line)
         render()
     }
@@ -75,22 +86,30 @@ class DiagnosticsActivity : Activity() {
         })
     }
 
-    /** YouTube Music picks, Apple Music plays. Keeps running if this screen is left. */
-    private fun relayRow() = LinearLayout(this).apply {
+    /** YouTube Music picks, Apple Music plays. Keeps running when this screen is closed. */
+    private fun relayRows() = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        addView(TextView(context).apply { setText(R.string.diag_relay) })
+        addView(buttonRow(
+            R.string.diag_start to { Relay.start(this@DiagnosticsActivity, fastTest = false) },
+            R.string.diag_fast to { Relay.start(this@DiagnosticsActivity, fastTest = true) },
+            R.string.diag_stop to { Relay.stop("stopped by you") },
+        ))
+        addView(buttonRow(
+            R.string.cd_previous to { Relay.previous() },
+            R.string.cd_next to { Relay.next() },
+        ))
+    }
+
+    private fun buttonRow(vararg buttons: Pair<Int, () -> Unit>) = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        addView(TextView(context).apply {
-            setText(R.string.diag_relay)
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        })
-        addView(Button(context).apply {
-            setText(R.string.diag_start)
-            setOnClickListener { RelayTest.start(this@DiagnosticsActivity) { log(it) } }
-        })
-        addView(Button(context).apply {
-            setText(R.string.diag_stop)
-            setOnClickListener { RelayTest.stop("stopped by you") }
-        })
+        buttons.forEach { (label, action) ->
+            addView(Button(context).apply {
+                setText(label)
+                setOnClickListener { action() }
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+        }
     }
 
     private fun copy() {

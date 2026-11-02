@@ -171,12 +171,13 @@ object SessionHub {
         if (t.isPlaying) t.controls.pause() else t.controls.play()
     }
 
+    /** While the relay is on, YouTube Music's picks decide what comes next (see [Relay]). */
     fun next() {
-        current?.controls?.skipToNext()
+        if (Relay.isOn) Relay.next() else current?.controls?.skipToNext()
     }
 
     fun previous() {
-        current?.controls?.skipToPrevious()
+        if (Relay.isOn) Relay.previous() else current?.controls?.skipToPrevious()
     }
 
     fun seekTo(ms: Long) {
