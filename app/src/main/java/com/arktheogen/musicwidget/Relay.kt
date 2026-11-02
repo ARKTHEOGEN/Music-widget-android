@@ -52,6 +52,8 @@ object Relay {
     private class Item(val title: String, val artist: String) {
         var apple: AppleCatalog.Track? = null
         var missing = false
+        /** Waiting for the lookup; callers queue here so one lookup serves all. */
+        var waiting: MutableList<(AppleCatalog.Track?) -> Unit>? = null
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -108,7 +110,7 @@ object Relay {
             // Apple Music idle ignores session commands; opening it loads its player.
             log("Apple Music isn't loaded: opening it")
             SessionHub.openApp(activity, AM)
-            waitForApple(firstIdx, tries = 10)
+            waitForApple(firstIdx, tries = 30)
             return
         }
         playIdx(firstIdx, forward = true)
@@ -128,11 +130,12 @@ object Relay {
 
     private fun waitForApple(idx: Int, tries: Int) {
         if (!isOn) return
-        if (attach()) {
-            log("Apple Music is up")
+        // Run 1 of step 1: 5 s wasn't enough. After 3 s, try even a session with no player loaded.
+        if (attach() || (tries <= 24 && am != null)) {
+            log("Apple Music is up (${Diagnostics.stateName(am?.playbackState?.state)})")
             return playIdx(idx, forward = true)
         }
-        if (tries == 0) return stop("Apple Music didn't start")
+        if (tries == 0) return stop("Apple Music didn't start within 15 s")
         main.postDelayed({ waitForApple(idx, tries - 1) }, 500)
     }
 
@@ -173,7 +176,9 @@ object Relay {
         if (pos + 1 < items.size) return playIdx(pos + 1, forward = true)
         val yt = session(YT) ?: return stop("YouTube Music isn't running (no more picks)")
         if (absorb(yt) > 0) return playIdx(pos + 1, forward = true)
+        val at = pos
         refill(yt) {
+            if (pos != at) return@refill // you moved on meanwhile
             if (pos + 1 < items.size) playIdx(pos + 1, forward = true)
             else stop("YouTube Music gave no more picks")
         }
@@ -279,6 +284,8 @@ object Relay {
     private fun withApple(idx: Int, done: (AppleCatalog.Track?) -> Unit) {
         val item = items[idx]
         if (item.apple != null || item.missing) return done(item.apple)
+        item.waiting?.let { it += done; return }
+        item.waiting = mutableListOf(done)
         val t0 = SystemClock.elapsedRealtime()
         worker.execute {
             val (found, error) = try {
@@ -299,7 +306,9 @@ object Relay {
                     log("[${idx + 1}] lookup failed ($error)")
                 }
                 save()
-                done(found)
+                val callers = item.waiting.orEmpty()
+                item.waiting = null
+                callers.forEach { it(found) }
             }
         }
     }
@@ -335,6 +344,9 @@ object Relay {
     private val startTimeout = Runnable {
         if (!isOn || pendingIdx < 0) return@Runnable
         val idx = pendingIdx
+        val s = am?.playbackState
+        log("[${idx + 1}] Apple Music now: ${Diagnostics.stateName(s?.state)}, \"${am?.let { Diagnostics.Song.from(it).title }}\"" +
+            (s?.errorMessage?.let { ", error: $it" } ?: ""))
         if (pendingVia == Via.MEDIA_ID) {
             log("[${idx + 1}] didn't start within ${ATTEMPT_MS / 1000} s: trying search")
             request(idx, Via.SEARCH)

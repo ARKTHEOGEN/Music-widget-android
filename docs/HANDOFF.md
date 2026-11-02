@@ -106,6 +106,14 @@ Each test pauses the source app, waits up to 15 s for the target to play, grades
   - "Rasika Rasika" matched **"Rasika Rasika (Remix)"** (wrong version); `media_id` didn't start it within 6 s. The rest of that song's log was lost (USB dropped and the phone's log buffer was cleared).
   - YouTube Music's list **stayed at 25** while only read: it adds no picks unless it moves. Refill needs a design.
   - Open: the 4–6 s gap per song; penalise Remix/Live/alternate versions unless the YouTube title has them; a looser second lookup for spelling variants.
+- **Relay engine (`Relay.kt`, `6bdacca`), fast test of 27 songs:**
+  - **Gap: usually 1.2–2.1 s** from request to playing (was 4–6 s); a few took 3.6–7.4 s. Next match is looked up during the current song (0.4–0.7 s).
+  - **`prepareFromMediaId` = play:** Apple Music switched to the prepared song at once (0.5 s). The engine turned prepare-ahead off by itself (saved in `relay.json`).
+  - **Songs 5–12 all failed** (media_id and search, 8 s each); song 13 played via search, then everything worked again. Catalogue lookups in that window took 4.5–9 s (normally 0.4 s), so the phone's network was probably slow, but not proven. The next build logs Apple Music's state and error on each failure.
+  - "Oh Senyoreeta" now matches Apple's "Sanyo Reetta" (spelling fix works). "Rasika Rasika" matched a same-titled song by other singers → artist match now required (initials count: "SPB" = "S.P. Balasubrahmanyam").
+  - **Refill works:** moving YouTube Music to its last song made it build a new list of 25 (24 new picks). It reported PLAYING after 1.4 s and was paused ~20 ms later (by state). Whether it was audible: ask the owner.
+  - Apple Music's session has an **"Autoplay" custom action**: could switch off its own autoplay so it never races our next pick.
+  - Starting with Apple Music closed: 5 s wait was too short; now 15 s, and tries a not-yet-loaded session after 3 s.
 
 **Open questions the report must answer:**
 1. Does **Apple Music on Android** accept play-from-search (intent or session)?

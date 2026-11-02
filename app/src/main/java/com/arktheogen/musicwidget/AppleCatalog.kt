@@ -15,8 +15,8 @@ import java.util.Locale
 object AppleCatalog {
     data class Track(val id: Long, val title: String, val artist: String, val durationMs: Long)
 
-    /** v2: v1 could save a different version (a remix) of the song. */
-    private const val PREFS = "apple_matches_v2"
+    /** v3: v1 could save a remix, v2 a same-titled song by other singers. */
+    private const val PREFS = "apple_matches_v3"
 
     /** Words that mark a different recording. A result with one the pick lacks is a different song. */
     private val VERSION_WORDS = Regex(
@@ -47,8 +47,8 @@ object AppleCatalog {
 
     /**
      * Title: same = 4, one starts with the other = 2, same sound with a different spelling = 1
-     * ("Oh Senyoreeta" / "Sanyo Reetta"; only counted when the artist matches too).
-     * Artist: +2. Not streamable, or a different version (see [VERSION_WORDS]): skipped.
+     * ("Oh Senyoreeta" / "Sanyo Reetta"). One artist must match too: "Rasika Rasika" by other
+     * singers is a different song. Not streamable, or a different version (see [VERSION_WORDS]): skipped.
      */
     private fun search(term: String, cc: String, title: String, artist: String): Track? {
         val json = JSONObject(Http.get("https://itunes.apple.com/search?term=${Http.enc(term)}&entity=song&limit=15&country=$cc"))
@@ -68,16 +68,16 @@ object AppleCatalog {
             if (VERSION_WORDS.findAll(fullLower).any { !wantLower.contains(it.value) }) continue
             val gotTitle = core(t)
             val gotArtists = artistTokens(a)
-            val artistScore = if (wantArtists.any { w -> gotArtists.any { g -> sameArtist(w, g) } }) 2 else 0
+            if (wantArtists.none { w -> gotArtists.any { g -> sameArtist(w, g) } }) continue
             val titleScore = when {
                 gotTitle.isEmpty() || wantTitle.isEmpty() -> 0
                 gotTitle == wantTitle -> 4
                 gotTitle.startsWith(wantTitle) || wantTitle.startsWith(gotTitle) -> 2
-                artistScore > 0 && closeSpelling(wantSound, sound(gotTitle)) -> 1
+                closeSpelling(wantSound, sound(gotTitle)) -> 1
                 else -> 0
             }
             if (titleScore == 0) continue
-            val score = titleScore + artistScore
+            val score = titleScore
             if (score > bestScore) { // ties keep Apple's own order (relevance)
                 bestScore = score
                 best = Track(r.optLong("trackId"), t, a, r.optLong("trackTimeMillis"))
@@ -86,9 +86,13 @@ object AppleCatalog {
         return best?.takeIf { it.id > 0 }
     }
 
-    /** "P. Unnikrishnan" vs "UnniKrishnan"; "S P Balasubramaniam" vs "S.P. Balasubrahmanyam". */
-    private fun sameArtist(a: String, b: String) =
-        a.contains(b) || b.contains(a) || closeSpelling(sound(a), sound(b))
+    /** "P. Unnikrishnan" vs "UnniKrishnan"; "S P Balasubramaniam" vs "S.P. Balasubrahmanyam"; "SPB" vs either. */
+    private fun sameArtist(a: Artist, b: Artist) =
+        a.joined.contains(b.joined) || b.joined.contains(a.joined) ||
+            closeSpelling(sound(a.joined), sound(b.joined)) ||
+            (a.joined.length <= 4 && a.joined == b.initials) || (b.joined.length <= 4 && b.joined == a.initials)
+
+    private class Artist(val joined: String, val initials: String)
 
     /** Edit distance within 30% of the longer word, for words of 6+ letters. */
     private fun closeSpelling(a: String, b: String): Boolean {
@@ -121,7 +125,9 @@ object AppleCatalog {
 
     /** "S. P. Balasubrahmanyam & Reena Bharadhwaj" → [spbalasubrahmanyam, reenabharadhwaj]; "SPB" → [spb]. */
     private fun artistTokens(artist: String) =
-        artist.split(",", "&", " and ", " feat", " ft.").map { norm(it) }.filter { it.length >= 3 }
+        artist.split(",", "&", " and ", " feat", " ft.")
+            .map { name -> Artist(norm(name), name.split(' ', '.').filter { it.isNotBlank() }.joinToString("") { norm(it).take(1) }) }
+            .filter { it.joined.length >= 3 }
 
     /** Lower case, accents removed ("Señorita" → "senorita"), letters and digits only. */
     private fun norm(s: String) = Normalizer.normalize(s.lowercase(Locale.ROOT), Normalizer.Form.NFD)
