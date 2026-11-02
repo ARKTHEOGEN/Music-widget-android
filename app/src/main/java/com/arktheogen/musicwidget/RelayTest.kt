@@ -26,7 +26,7 @@ object RelayTest {
     private const val START_TIMEOUT_MS = 15_000L
     /** Send the next pick this early: 0.7 s let Apple Music's own autoplay win (run 1). */
     private const val HANDOFF_EARLY_MS = 2_000L
-    private const val YT_WATCH_MS = 3_000L
+    private const val YT_WATCH_MS = 2_500L
 
     private val main = Handler(Looper.getMainLooper())
     private lateinit var ctx: Context
@@ -70,7 +70,12 @@ object RelayTest {
         log("  done")
     }
 
-    /** [activity] is null when called from the background, where Android won't let us open an app. */
+    /**
+     * [activity] is null when called from the background, where Android won't let us open an app.
+     * Order matters (run 2): moving YouTube Music's place makes it start playing and take the speaker
+     * (audio focus), and Apple Music then pauses itself. So move YouTube Music first, pause it as soon
+     * as it starts, and only then start Apple Music, which takes the speaker last.
+     */
     private fun next(activity: Activity?) {
         if (step >= SONGS) return stop("finished $SONGS songs")
         val yt = session(YT) ?: return stop("YouTube Music session disappeared")
@@ -79,10 +84,32 @@ object RelayTest {
         val d = item.description
         expected = Diagnostics.Song(d.title?.toString().orEmpty(), d.subtitle?.toString().orEmpty())
         log("  [$step] YouTube Music pick: \"${expected.title}\" / ${expected.artist}")
-        requestedAt = SystemClock.elapsedRealtime()
-        log("      method: ${playInApple(activity)}")
-        advanceYouTube(item)
-        main.postDelayed(::waitForStart, 500)
+        yt.transportControls.skipToQueueItem(item.queueId)
+        val sentAt = SystemClock.elapsedRealtime()
+        val check = object : Runnable {
+            override fun run() {
+                if (!running) return
+                val y = session(YT) ?: return stop("YouTube Music session disappeared")
+                val state = y.playbackState?.state
+                val elapsed = SystemClock.elapsedRealtime() - sentAt
+                val started = state == PlaybackState.STATE_PLAYING || state == PlaybackState.STATE_BUFFERING
+                if (!started && elapsed < YT_WATCH_MS) {
+                    main.postDelayed(this, 100)
+                    return
+                }
+                if (started) y.transportControls.pause()
+                val queue = y.queue.orEmpty()
+                val fresh = queue.count { it.queueId !in seenIds }
+                seenIds = seenIds + queue.map { it.queueId }
+                log("      YouTube Music moved to id ${y.playbackState?.activeQueueItemId} (sent ${item.queueId}); " +
+                    (if (started) "started by itself after $elapsed ms, paused it" else "stayed quiet") +
+                    "; list ${queue.size} songs, $fresh new")
+                requestedAt = SystemClock.elapsedRealtime()
+                log("      method: ${playInApple(activity)}")
+                main.postDelayed(::waitForStart, 500)
+            }
+        }
+        main.post(check)
     }
 
     /** The item after YouTube Music's current one (the first item if it reports none). */
@@ -109,43 +136,16 @@ object RelayTest {
         }
     }
 
-    /** Moves YouTube Music's place in its list to the song we just played, then checks it stays quiet. */
-    private fun advanceYouTube(item: MediaSession.QueueItem) {
-        val yt = session(YT) ?: return
-        yt.transportControls.skipToQueueItem(item.queueId)
-        // Run 1: moving its place made YouTube Music start playing after 1.3-2.3 s. Pause straight away.
-        yt.transportControls.pause()
-        val sentAt = SystemClock.elapsedRealtime()
-        var autoPlayedAfter = -1L
-        val check = object : Runnable {
-            override fun run() {
-                val y = session(YT) ?: return
-                val state = y.playbackState?.state
-                val elapsed = SystemClock.elapsedRealtime() - sentAt
-                if (autoPlayedAfter < 0 && (state == PlaybackState.STATE_PLAYING || state == PlaybackState.STATE_BUFFERING)) {
-                    autoPlayedAfter = elapsed
-                    y.transportControls.pause()
-                }
-                if (elapsed < YT_WATCH_MS) {
-                    main.postDelayed(this, 250)
-                    return
-                }
-                val queue = y.queue.orEmpty()
-                val fresh = queue.count { it.queueId !in seenIds }
-                seenIds = seenIds + queue.map { it.queueId }
-                log("      YouTube Music now at id ${y.playbackState?.activeQueueItemId} (sent ${item.queueId}), " +
-                    "${Diagnostics.stateName(y.playbackState?.state)}; list ${queue.size} songs, $fresh new")
-                if (autoPlayedAfter >= 0) log("      YouTube Music started playing by itself after ${autoPlayedAfter} ms; paused it")
-            }
-        }
-        main.postDelayed(check, 250)
-    }
-
     /** Started = playing AND the title matches our pick (run 1 mistook Apple's autoplay song for ours). */
     private fun waitForStart() {
         if (!running) return
         val am = session(AM)
         val got = am?.let { Diagnostics.Song.from(it) }
+        val matches = got != null && !Diagnostics.verdict(expected, got).startsWith("MISMATCH")
+        if (matches && am?.playbackState?.state == PlaybackState.STATE_PAUSED) {
+            am.transportControls.play()
+            log("      our pick is loaded but paused (lost the speaker?): resumed it")
+        }
         if (am?.playbackState?.state == PlaybackState.STATE_PLAYING && got != null) {
             if (!Diagnostics.verdict(expected, got).startsWith("MISMATCH")) {
                 val secs = (SystemClock.elapsedRealtime() - requestedAt) / 1000.0
@@ -194,6 +194,11 @@ object RelayTest {
             state == PlaybackState.STATE_STOPPED || state == PlaybackState.STATE_NONE -> {
                 log("      Apple Music stopped (${Diagnostics.stateName(state)}): sending the next pick")
                 next(null)
+            }
+            state == PlaybackState.STATE_PAUSED && remaining > HANDOFF_EARLY_MS + 1000 -> {
+                log("      Apple Music paused mid-song (lost the speaker?): resumed it")
+                am.transportControls.play()
+                main.postDelayed(::watchEnd, 1000)
             }
             else -> main.postDelayed(::watchEnd, 250)
         }
