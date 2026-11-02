@@ -114,6 +114,9 @@ Each test pauses the source app, waits up to 15 s for the target to play, grades
   - **Refill works:** moving YouTube Music to its last song made it build a new list of 25 (24 new picks). It reported PLAYING after 1.4 s and was paused ~20 ms later (by state). Whether it was audible: ask the owner.
   - Apple Music's session has an **"Autoplay" custom action**: could switch off its own autoplay so it never races our next pick.
   - Starting with Apple Music closed: 5 s wait was too short; now 15 s, and tries a not-yet-loaded session after 3 s.
+- **Fast test 2 (after the artist-match fix):** 26 played, **0 failed**, 2 skipped on purpose ("Rasika Rasika": not on Apple Music; "Oru Murai Iru Murai": artist "Various Artist"). Gap 1.6–5.8 s, median 3.3 s (Apple Music's load time; our request is the same). **Refill: +24 picks, no skip, owner heard nothing.**
+- **Step 2 (`774383e`, `165259a`): badge replaces the app chips.** Tap the badge (widget or pop-up) = relay on/off; ringed while on; pop-up reads "Apple Music · YouTube Music picks". App modes (Auto/Apple/YouTube) removed from `SessionHub`. Owner confirmed it works.
+  - **Apple Music autoplay:** custom action `com.apple.android.music.playback.action.ACTION_ENABLE_CONTINUOUS_PLAYBACK`, extra `..._ARG_ENABLED`. The extra is what a press would set: it read `false` while autoplay was on. Sending it with `ARG_ENABLED=false` switches autoplay off (extra then reads `true`); `true` switches it back. The relay does this on start and restores it on stop. Confirmed twice in the log.
 
 **Open questions the report must answer:**
 1. Does **Apple Music on Android** accept play-from-search (intent or session)?
@@ -136,7 +139,7 @@ Each test pauses the source app, waits up to 15 s for the target to play, grades
 7. **Done (`ddbbe04`):** write the report and each test-log line to logcat (for example tag `MusicWidgetDiag`), so the session reads results with `adb logcat -s MusicWidgetDiag`. Debug builds export `DiagnosticsActivity`: `adb shell am start -n com.arktheogen.musicwidget/.DiagnosticsActivity`.
 8. The owner plays a song in one app. Run Search and Link tests to each other app. Repeat with each app as the source. Collect the report.
 
-## 7. After the diagnostics
+## 7. After the diagnostics (Feature 2 = Option A, built as `Relay.kt`; next: step 3, info view)
 
 **Feature 1: handoff (switch app, keep the song).**
 Flow: identify the song (title, artist, length, position) → start it in the target app using the proven method, with fallback to the next one → verify the match → seek to the same position → pause the old app. On a CLOSE match, play it and show "closest match".
