@@ -31,13 +31,14 @@ import kotlin.math.min
  * drag lives here:
  *  - swipe art left / right → next / previous (art follows your finger)
  *  - double-tap art → play / pause
- *  - tap or swipe up on art → lyrics; swipe down → close
+ *  - tap art → lyrics on / off; swipe up → lyrics; swipe down → close
+ *  - with lyrics showing, a sideways swipe still changes track
  *  - drag the bar → seek; tap a lyric line → jump there
  */
 class PlayerPanelActivity : Activity(), SessionHub.Listener {
 
     private lateinit var card: LinearLayout
-    private lateinit var artFrame: FrameLayout
+    private lateinit var artFrame: ArtFrame
     private lateinit var art: ImageView
     private lateinit var lyricsScroll: ScrollView
     private lateinit var lyricsList: LinearLayout
@@ -180,7 +181,7 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
             }
         })
 
-        artFrame.setOnTouchListener(ArtGestures())
+        artFrame.touchFirst = ArtGestures()::handle
         lyricsScroll.setOnTouchListener { _, _ ->
             lastManualScroll = SystemClock.uptimeMillis()
             false
@@ -405,27 +406,39 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
     }
 
     /** Horizontal drag moves the art with your finger; release past 25% width skips. */
-    private inner class ArtGestures : View.OnTouchListener, GestureDetector.SimpleOnGestureListener() {
+    /**
+     * Sees every touch on the art first (through [ArtFrame]).
+     * Art or a lyrics message showing: all gestures are ours.
+     * Lyric lines showing: only a sideways drag is ours; scrolling and tapping a line stay with the list.
+     */
+    private inner class ArtGestures : GestureDetector.SimpleOnGestureListener() {
         private val detector = GestureDetector(this@PlayerPanelActivity, this)
         private val slop = ViewConfiguration.get(this@PlayerPanelActivity).scaledTouchSlop
         private val swipeDistance = 80 * resources.displayMetrics.density
         private var downX = 0f
         private var downY = 0f
         private var dragging = false
+        private var scrolling = false
 
-        override fun onTouch(v: View, e: MotionEvent): Boolean {
-            if (lyricsVisible) return false // let the lyrics list scroll
-            detector.onTouchEvent(e)
+        /** Returns true when the gesture is ours. */
+        fun handle(e: MotionEvent): Boolean {
+            val linesShowing = lyricsVisible && lyricsMessageRes == null
+            if (!linesShowing) detector.onTouchEvent(e)
+            val v = artFrame
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     downX = e.rawX
                     downY = e.rawY
                     dragging = false
+                    scrolling = false
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = e.rawX - downX
                     val dy = e.rawY - downY
-                    if (!dragging && abs(dx) > slop && abs(dx) > abs(dy)) dragging = true
+                    if (!dragging && !scrolling) {
+                        if (abs(dx) > slop && abs(dx) > abs(dy)) dragging = true
+                        else if (abs(dy) > slop) scrolling = true // vertical: never becomes a track swipe
+                    }
                     if (dragging) {
                         v.translationX = dx
                         v.rotation = dx / v.width * 6f
@@ -436,16 +449,19 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
                     val dx = e.rawX - downX
                     val dy = e.rawY - downY
                     val up = e.actionMasked == MotionEvent.ACTION_UP
+                    val wasDragging = dragging
+                    dragging = false
                     when {
-                        dragging && up && abs(dx) > v.width * 0.25f -> swipeTrack(v, toNext = dx < 0)
-                        dragging -> springBack(v)
+                        wasDragging && up && abs(dx) > v.width * 0.25f -> swipeTrack(v, toNext = dx < 0)
+                        wasDragging -> springBack(v)
+                        linesShowing -> return false
                         up && abs(dy) > abs(dx) && dy > swipeDistance -> close()
                         up && abs(dy) > abs(dx) && -dy > swipeDistance -> showLyrics(true)
                     }
-                    dragging = false
+                    return true
                 }
             }
-            return true
+            return dragging || !linesShowing
         }
 
         override fun onDown(e: MotionEvent) = true
@@ -455,8 +471,9 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
             return true
         }
 
+        // Toggles, so a "no lyrics" message can be tapped away.
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
-            showLyrics(true)
+            showLyrics(!lyricsVisible)
             return true
         }
     }

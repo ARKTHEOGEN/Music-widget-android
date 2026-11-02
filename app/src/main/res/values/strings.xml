@@ -50,7 +50,7 @@
     <string name="btn_open_player">Open player panel</string>
     <string name="pin_not_supported">Your launcher can\'t add widgets this way. Long-press the home screen → Widgets instead.</string>
     <string name="tips_title">Gestures</string>
-    <string name="tips_body">Widget: tap album art to open the player panel.\nPanel: swipe art left/right = next/previous · double-tap = play/pause · tap or swipe up = lyrics · swipe down = close · drag the bar to seek · tap a lyric line to jump there · long-press an app icon to open that app.</string>
+    <string name="tips_body">Widget: tap album art to open the player panel.\nPanel: swipe art left/right = next/previous · double-tap = play/pause · tap = lyrics on/off · swipe up = lyrics · swipe down = close · drag the bar to seek · tap a lyric line to jump there · long-press an app icon to open that app.</string>
 
     <string name="btn_diagnostics">Diagnostics (test what each app supports)</string>
     <string name="diag_title">Diagnostics</string>
