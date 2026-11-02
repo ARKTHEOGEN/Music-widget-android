@@ -105,6 +105,7 @@ object Diagnostics {
             }
         }
         appendLine()
+        appendAudio(ctx)
         appendLine("== Active media sessions ==")
         val list = sessions(ctx)
         when {
@@ -142,9 +143,36 @@ object Diagnostics {
         val keys = m?.keySet()?.sorted().orEmpty()
         if (keys.isEmpty()) appendLine("    (none)")
         keys.forEach { key -> appendLine("    ${key.removePrefix("android.media.metadata.")} = ${valueOf(m!!, key)}") }
-        val extras = c.extras?.keySet()?.sorted()?.joinToString().orEmpty()
-        appendLine("  extras: ${extras.ifEmpty { "(none)" }}")
+        appendBundle("session extras", c.extras)
+        appendBundle("playback-state extras", s?.extras)
         appendLine("  rating type: ${c.ratingType}, flags: ${c.flags}")
+        appendLine()
+    }
+
+    private fun StringBuilder.appendBundle(label: String, b: android.os.Bundle?) {
+        val keys = b?.keySet()?.sorted().orEmpty()
+        appendLine("  $label:${if (keys.isEmpty()) " (none)" else ""}")
+        @Suppress("DEPRECATION")
+        keys.forEach { k -> appendLine("    ${k.substringAfterLast('.')} = ${b!!.get(k).let { v -> if (v is IntArray) v.toList() else if (v is Array<*>) v.toList() else v }}") }
+    }
+
+    /** What Android itself tells an ordinary app about the audio path (mixer, outputs, players). */
+    private fun StringBuilder.appendAudio(ctx: Context) {
+        val am = ctx.getSystemService(android.media.AudioManager::class.java)
+        appendLine("== Audio path ==")
+        appendLine("mixer: ${am.getProperty(android.media.AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)} Hz, " +
+            "${am.getProperty(android.media.AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)} frames per buffer")
+        am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS).forEach { d ->
+            appendLine("output: type ${d.type} \"${d.productName}\" rates=${d.sampleRates.toList()} encodings=${d.encodings.toList()} channels=${d.channelCounts.toList()}")
+            if (Build.VERSION.SDK_INT >= 34) {
+                val mixers = am.getSupportedMixerAttributes(d)
+                if (mixers.isNotEmpty()) appendLine("  mixer modes: " + mixers.joinToString { "${it.format.sampleRate}Hz enc${it.format.encoding} behavior${it.mixerBehavior}" })
+            }
+        }
+        am.activePlaybackConfigurations.filter { it.audioAttributes.usage == android.media.AudioAttributes.USAGE_MEDIA }.forEach { pc ->
+            appendLine("player: $pc")
+            if (Build.VERSION.SDK_INT >= 30) appendLine("  device: ${pc.audioDeviceInfo?.let { "type ${it.type} \"${it.productName}\"" }}")
+        }
         appendLine()
     }
 

@@ -51,6 +51,8 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
     private lateinit var infoList: LinearLayout
     private var infoVisible = false
     private var infoKey: String? = null
+    /** The audio rows, refreshed on every player change while the info shows (the format arrives after the song starts). */
+    private var audioBox: LinearLayout? = null
     private lateinit var title: TextView
     private lateinit var artist: TextView
     private lateinit var seek: SeekBar
@@ -250,7 +252,10 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
 
         updateProgress()
         showLyrics(lyricsVisible) // reloads only if the track changed
-        if (infoVisible) loadInfo() // same
+        if (infoVisible) {
+            loadInfo() // same
+            renderAudio(state)
+        }
     }
 
     /** Where the song plays, and whether YouTube Music is picking (tap = relay on/off). */
@@ -474,6 +479,7 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
     }
 
     private fun infoMessage(text: String) {
+        audioBox = null
         infoList.removeAllViews()
         infoList.addView(infoText(text, 16f, bold = false, secondary = false))
     }
@@ -489,9 +495,39 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
             R.string.info_length to state.durationMs.takeIf { it > 0 }?.let { formatTime(it) },
         ).forEach { (label, value) -> if (!value.isNullOrBlank()) infoList.addView(infoRow(getString(label), value)) }
         info.copyright?.let { infoList.addView(infoText(it, 12f, bold = false, secondary = true)) }
+        infoList.addView(infoHeading(R.string.info_audio))
+        audioBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { infoList.addView(it) }
+        renderAudio(state)
         if (info.artists.isEmpty()) return
         infoList.addView(infoHeading(R.string.info_artists))
         info.artists.forEach { infoList.addView(artistRow(it)) }
+    }
+
+    /** Stream format (what the app reports) → Android's mixer → output, for the audio nerds. */
+    private fun renderAudio(state: NowPlaying) {
+        val box = audioBox ?: return
+        val q = AudioQuality.read(this, state.app?.pkg)
+        box.removeAllViews()
+        val format = listOfNotNull(
+            q.bitDepth?.let { "$it-bit" },
+            q.sampleRate?.let { AudioQuality.khz(it) + " kHz" },
+            q.channels?.let { if (it == 2) "stereo" else if (it == 1) "mono" else "$it ch" },
+        ).joinToString(" / ")
+        listOf(
+            R.string.info_quality to q.tier,
+            R.string.info_codec to q.codec,
+            R.string.info_format to format.ifEmpty { null },
+            R.string.info_bitrate to q.bitRate?.let { String.format(java.util.Locale.ROOT, "%,d kbps", it / 1000) },
+            R.string.info_output to q.output,
+            R.string.info_mixer to q.mixerRate?.let { rate ->
+                when {
+                    q.bitPerfect -> getString(R.string.info_bit_perfect)
+                    q.resampled -> getString(R.string.info_resampled, AudioQuality.khz(q.sampleRate!!), AudioQuality.khz(rate))
+                    else -> AudioQuality.khz(rate) + " kHz"
+                }
+            },
+        ).forEach { (label, value) -> if (!value.isNullOrBlank()) box.addView(infoRow(getString(label), value)) }
+        if (q.codec == null) box.addView(infoText(getString(R.string.info_no_format), 12f, bold = false, secondary = true))
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -540,7 +576,7 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             addView(infoText(a.name, 15f, bold = true, secondary = false))
             addView(infoText(a.about ?: getString(R.string.info_no_bio), 13f, bold = false, secondary = true).apply {
-                maxLines = 5
+                maxLines = 3
                 ellipsize = android.text.TextUtils.TruncateAt.END
             })
         })

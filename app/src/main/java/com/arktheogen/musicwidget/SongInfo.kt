@@ -33,7 +33,7 @@ object SongInfo {
     )
 
     private const val MAX_ARTISTS = 6
-    private const val BIO_CHARS = 320
+    private const val BIO_CHARS = 200
     /** Words in a Wikipedia description that say the page is about a music person, not a namesake. */
     private val MUSIC_WORDS = Regex(
         """singer|musician|composer|lyricist|songwriter|rapper|vocalist|band|music director|playback|poet|instrumentalist|record producer"""

@@ -43,6 +43,16 @@
     <string name="info_genre">Genre</string>
     <string name="info_track">Track</string>
     <string name="info_length">Length</string>
+    <string name="info_audio">Audio</string>
+    <string name="info_quality">Quality</string>
+    <string name="info_codec">Codec</string>
+    <string name="info_format">Format</string>
+    <string name="info_bitrate">Bit rate</string>
+    <string name="info_output">Output</string>
+    <string name="info_mixer">Android</string>
+    <string name="info_resampled">Resampled %1$s → %2$s kHz by Android\'s mixer (not bit-perfect)</string>
+    <string name="info_bit_perfect">Bit-perfect to the USB DAC</string>
+    <string name="info_no_format">This app doesn\'t report its stream format.</string>
     <string name="info_no_bio">No Wikipedia page found</string>
     <string name="lyrics_instrumental">♪ Instrumental ♪</string>
 
