@@ -76,6 +76,22 @@
                 android:textColor="#FFFFFFFF"
                 android:textSize="16sp"
                 android:visibility="gone" />
+            <ScrollView
+                android:id="@+id/info_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fadingEdgeLength="32dp"
+                android:fillViewport="true"
+                android:requiresFadingEdge="vertical"
+                android:scrollbars="none"
+                android:visibility="gone">
+                <LinearLayout
+                    android:id="@+id/info_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp" />
+            </ScrollView>
         </com.arktheogen.musicwidget.ArtFrame>
 
         <TextView
@@ -188,6 +204,13 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_lyrics"
                 android:src="@drawable/ic_lyrics" />
+            <ImageButton
+                android:id="@+id/btn_info"
+                android:layout_width="56dp"
+                android:layout_height="48dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/cd_info"
+                android:src="@drawable/ic_info" />
             <ImageButton
                 android:id="@+id/btn_open"
                 android:layout_width="56dp"

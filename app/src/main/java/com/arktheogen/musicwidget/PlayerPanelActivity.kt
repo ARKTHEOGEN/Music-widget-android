@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Handler
@@ -46,6 +47,10 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
     private lateinit var lyricsScroll: ScrollView
     private lateinit var lyricsList: LinearLayout
     private lateinit var lyricsStatus: TextView
+    private lateinit var infoScroll: ScrollView
+    private lateinit var infoList: LinearLayout
+    private var infoVisible = false
+    private var infoKey: String? = null
     private lateinit var title: TextView
     private lateinit var artist: TextView
     private lateinit var seek: SeekBar
@@ -129,6 +134,8 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         lyricsScroll = findViewById(R.id.lyrics_scroll)
         lyricsList = findViewById(R.id.lyrics_list)
         lyricsStatus = findViewById(R.id.lyrics_status)
+        infoScroll = findViewById(R.id.info_scroll)
+        infoList = findViewById(R.id.info_list)
         title = findViewById(R.id.title)
         artist = findViewById(R.id.artist)
         seek = findViewById(R.id.seek)
@@ -165,6 +172,9 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         btnShuffle.setOnClickListener { SessionHub.toggleShuffle() }
         btnRepeat.setOnClickListener { SessionHub.cycleRepeat() }
         findViewById<View>(R.id.btn_lyrics).setOnClickListener { showLyrics(!lyricsVisible) }
+        findViewById<View>(R.id.btn_info).setOnClickListener { showInfo(!infoVisible) }
+        // Tap anywhere on the info (rows aren't clickable, so taps reach the list) → back to the art.
+        infoList.setOnClickListener { showInfo(false) }
         findViewById<View>(R.id.btn_open).setOnClickListener { SessionHub.openApp(this, np?.app?.pkg) }
 
         badge.setOnClickListener { Toast.makeText(this, Relay.toggle(this), Toast.LENGTH_SHORT).show() }
@@ -240,6 +250,7 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
 
         updateProgress()
         showLyrics(lyricsVisible) // reloads only if the track changed
+        if (infoVisible) loadInfo() // same
     }
 
     /** Where the song plays, and whether YouTube Music is picking (tap = relay on/off). */
@@ -303,8 +314,9 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
     // ---------------------------------------------------------------- lyrics
 
     private fun showLyrics(show: Boolean) {
+        if (show && infoVisible) showInfo(false)
         lyricsVisible = show
-        art.alpha = if (show) 0.15f else 1f
+        art.alpha = if (show || infoVisible) 0.15f else 1f
         if (show) loadLyrics()
         refreshLyricsViews()
     }
@@ -427,6 +439,122 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         }
     }
 
+    // ---------------------------------------------------------------- info
+
+    /** Song and artist details over the art, toggled like the lyrics (only one shows at a time). */
+    private fun showInfo(show: Boolean) {
+        if (show && lyricsVisible) showLyrics(false)
+        infoVisible = show
+        art.alpha = if (show || lyricsVisible) 0.15f else 1f
+        infoScroll.visibility = if (show) View.VISIBLE else View.GONE
+        if (show) loadInfo()
+    }
+
+    private fun loadInfo() {
+        val state = np ?: return
+        if (!state.hasSession || state.title.isBlank()) {
+            infoKey = null
+            infoMessage(getString(R.string.lyrics_nothing))
+            return
+        }
+        val key = state.trackKey
+        if (key == infoKey) return
+        infoKey = key
+        infoMessage(getString(R.string.info_loading))
+        infoScroll.scrollTo(0, 0)
+        SongInfo.load(this, state.title, state.artist) { info ->
+            if (key != infoKey || isDestroyed) return@load
+            if (info == null) {
+                infoKey = null // try again next time
+                infoMessage(getString(R.string.info_failed))
+            } else {
+                renderInfo(info, state)
+            }
+        }
+    }
+
+    private fun infoMessage(text: String) {
+        infoList.removeAllViews()
+        infoList.addView(infoText(text, 16f, bold = false, secondary = false))
+    }
+
+    private fun renderInfo(info: SongInfo.Info, state: NowPlaying) {
+        infoList.removeAllViews()
+        infoList.addView(infoHeading(R.string.info_song))
+        listOf(
+            R.string.info_album to info.album,
+            R.string.info_released to info.year,
+            R.string.info_genre to info.genre,
+            R.string.info_track to info.track,
+            R.string.info_length to state.durationMs.takeIf { it > 0 }?.let { formatTime(it) },
+        ).forEach { (label, value) -> if (!value.isNullOrBlank()) infoList.addView(infoRow(getString(label), value)) }
+        info.copyright?.let { infoList.addView(infoText(it, 12f, bold = false, secondary = true)) }
+        if (info.artists.isEmpty()) return
+        infoList.addView(infoHeading(R.string.info_artists))
+        info.artists.forEach { infoList.addView(artistRow(it)) }
+    }
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    private fun infoText(text: String, sp: Float, bold: Boolean, secondary: Boolean) = TextView(this).apply {
+        this.text = text
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, sp)
+        setTextColor(if (secondary) getColor(R.color.text_secondary) else 0xFFFFFFFF.toInt())
+        if (bold) typeface = Typeface.DEFAULT_BOLD
+        setPadding(0, dp(2), 0, dp(2))
+    }
+
+    private fun infoHeading(res: Int) = infoText(getString(res).uppercase(), 12f, bold = true, secondary = true).apply {
+        letterSpacing = 0.1f
+        setPadding(0, dp(12), 0, dp(4))
+    }
+
+    private fun infoRow(label: String, value: String) = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        addView(infoText(label, 14f, bold = false, secondary = true).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(84), LinearLayout.LayoutParams.WRAP_CONTENT)
+        })
+        addView(infoText(value, 14f, bold = false, secondary = false).apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+    }
+
+    private fun artistRow(a: SongInfo.Artist) = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        setPadding(0, dp(8), 0, dp(8))
+        val size = dp(56)
+        addView(ImageView(context).apply {
+            layoutParams = LinearLayout.LayoutParams(size, size).apply { marginEnd = dp(12) }
+            setBackgroundResource(R.drawable.photo_circle)
+            clipToOutline = true
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            val photo = a.photo?.let { decodePhoto(it.path, size) }
+            if (photo != null) setImageBitmap(photo) else {
+                setImageResource(R.drawable.ic_music_note)
+                setPadding(dp(14), dp(14), dp(14), dp(14))
+            }
+        })
+        addView(LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            addView(infoText(a.name, 15f, bold = true, secondary = false))
+            addView(infoText(a.about ?: getString(R.string.info_no_bio), 13f, bold = false, secondary = true).apply {
+                maxLines = 5
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+        })
+    }
+
+    /** Decodes a saved photo no bigger than needed (photos are 250 px; shown at 56 dp). */
+    private fun decodePhoto(path: String, size: Int): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        var sample = 1
+        while (bounds.outWidth / (sample * 2) >= size) sample *= 2
+        return BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })
+    }
+
     // ---------------------------------------------------------------- gestures
 
     private fun close() {
@@ -485,7 +613,8 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
 
         /** Returns true when the gesture is ours. */
         fun handle(e: MotionEvent): Boolean {
-            val linesShowing = lyricsVisible && lyricsMessageRes == null
+            // Lines or info: scrolling and taps belong to the list.
+            val linesShowing = (lyricsVisible && lyricsMessageRes == null) || infoVisible
             if (!linesShowing) detector.onTouchEvent(e)
             val v = artFrame
             when (e.actionMasked) {
