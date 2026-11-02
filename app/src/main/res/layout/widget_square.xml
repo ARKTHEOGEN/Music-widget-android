@@ -32,7 +32,7 @@
         android:layout_gravity="top|end"
         android:layout_margin="4dp"
         android:background="?android:attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/cd_switch_app"
+        android:contentDescription="@string/cd_relay_off"
         android:padding="6dp"
         android:src="@drawable/ic_music_note" />
     <LinearLayout

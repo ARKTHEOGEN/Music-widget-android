@@ -10,9 +10,11 @@
     <string name="open_a_music_app">Start a song in a music app</string>
     <string name="widget_setup_title">Tap to set up</string>
     <string name="widget_setup_subtitle">Allow notification access</string>
-    <string name="mode_auto">Auto</string>
-    <string name="following_auto">Following: whatever is playing</string>
-    <string name="following_app">Following: %1$s</string>
+    <string name="badge_relay">%1$s · YouTube Music picks</string>
+    <string name="relay_on">Relay on: YouTube Music picks, Apple Music plays</string>
+    <string name="relay_off">Relay off</string>
+    <string name="relay_needs_apps">The relay needs both Apple Music and YouTube Music</string>
+    <string name="relay_needs_pick">Play a song in YouTube Music first, then tap the badge</string>
 
     <string name="cd_play">Play</string>
     <string name="cd_pause">Pause</string>
@@ -23,7 +25,8 @@
     <string name="cd_lyrics">Lyrics</string>
     <string name="cd_open_app">Open music app</string>
     <string name="cd_album_art">Album art</string>
-    <string name="cd_switch_app">Switch music app</string>
+    <string name="cd_relay_off">Relay off. Tap: YouTube Music picks, Apple Music plays</string>
+    <string name="cd_relay_on">Relay on. Tap to turn off</string>
 
     <string name="lyrics_loading">Finding lyrics…</string>
     <string name="lyrics_not_found">No lyrics found for this song</string>
@@ -51,7 +54,7 @@
     <string name="btn_open_player">Open player panel</string>
     <string name="pin_not_supported">Your launcher can\'t add widgets this way. Long-press the home screen → Widgets instead.</string>
     <string name="tips_title">Gestures</string>
-    <string name="tips_body">Widget: tap album art to open the player panel.\nPanel: swipe art left/right = next/previous · double-tap = play/pause · tap = lyrics on/off · swipe up = lyrics · swipe down = close · drag the bar to seek · on lyrics: tap a line = jump there, tap elsewhere = back to art · long-press an app icon to open that app.</string>
+    <string name="tips_body">Widget: tap album art to open the player panel.\nPanel: swipe art left/right = next/previous · double-tap = play/pause · tap = lyrics on/off · swipe up = lyrics · swipe down = close · drag the bar to seek · on lyrics: tap a line = jump there, tap elsewhere = back to art.\nBadge (widget and panel): tap = relay on/off (YouTube Music picks, Apple Music plays) · long-press (panel) = open the app.</string>
 
     <string name="btn_diagnostics">Diagnostics (test what each app supports)</string>
     <string name="diag_title">Diagnostics</string>

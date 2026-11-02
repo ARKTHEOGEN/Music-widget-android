@@ -22,6 +22,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.Toast
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -51,8 +52,7 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
     private lateinit var btnShuffle: ImageButton
     private lateinit var btnRepeat: ImageButton
     private lateinit var btnPlay: ImageButton
-    private lateinit var chipAuto: TextView
-    private lateinit var chips: List<ImageView>
+    private lateinit var badge: TextView
 
     private val ticker = Handler(Looper.getMainLooper())
     private var np: NowPlaying? = null
@@ -125,8 +125,7 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         btnShuffle = findViewById(R.id.btn_shuffle)
         btnRepeat = findViewById(R.id.btn_repeat)
         btnPlay = findViewById(R.id.btn_play)
-        chipAuto = findViewById(R.id.chip_auto)
-        chips = listOf(findViewById(R.id.chip_0), findViewById(R.id.chip_1), findViewById(R.id.chip_2))
+        badge = findViewById(R.id.badge)
     }
 
     /** Card: full width on phones, max 480dp on tablets. Art: square, never taller than 42% of screen. */
@@ -156,16 +155,8 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         findViewById<View>(R.id.btn_lyrics).setOnClickListener { showLyrics(!lyricsVisible) }
         findViewById<View>(R.id.btn_open).setOnClickListener { SessionHub.openApp(this, np?.app?.pkg) }
 
-        chipAuto.setOnClickListener { SessionHub.select(this, SessionHub.AUTO) }
-        MusicApps.ALL.forEachIndexed { i, app ->
-            val chip = chips[i]
-            val icon = MusicApps.icon(this, app.pkg) // null = not installed: hide its chip
-            chip.visibility = if (icon != null) View.VISIBLE else View.GONE
-            chip.setImageDrawable(icon)
-            chip.contentDescription = app.label
-            chip.setOnClickListener { SessionHub.select(this, app.pkg) }
-            chip.setOnLongClickListener { SessionHub.openApp(this, app.pkg) }
-        }
+        badge.setOnClickListener { Toast.makeText(this, Relay.toggle(this), Toast.LENGTH_SHORT).show() }
+        badge.setOnLongClickListener { SessionHub.openApp(this, np?.app?.pkg) }
 
         seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
@@ -229,11 +220,26 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         seek.isEnabled = state.canSeek
         duration.text = if (state.durationMs > 0) formatTime(state.durationMs) else ""
 
-        chipAuto.isSelected = state.mode == SessionHub.AUTO
-        MusicApps.ALL.forEachIndexed { i, app -> chips[i].isSelected = state.mode == app.pkg }
+        renderBadge(state)
 
         updateProgress()
         showLyrics(lyricsVisible) // reloads only if the track changed
+    }
+
+    /** Where the song plays, and whether YouTube Music is picking (tap = relay on/off). */
+    private fun renderBadge(state: NowPlaying) {
+        val app = state.app
+        badge.visibility = if (app != null) View.VISIBLE else View.GONE
+        if (app == null) return
+        badge.text = if (state.relay) getString(R.string.badge_relay, app.label) else app.label
+        badge.isSelected = state.relay
+        badge.contentDescription = getString(if (state.relay) R.string.cd_relay_on else R.string.cd_relay_off)
+        if (badge.tag != app.pkg) {
+            badge.tag = app.pkg
+            val size = (20 * resources.displayMetrics.density).toInt()
+            val icon = MusicApps.icon(this, app.pkg)?.mutate()?.apply { setBounds(0, 0, size, size) }
+            badge.setCompoundDrawablesRelative(icon, null, null, null)
+        }
     }
 
     private fun applyColors(look: Artwork.Look) {

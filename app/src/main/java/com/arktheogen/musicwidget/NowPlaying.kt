@@ -11,7 +11,8 @@ enum class Repeat { UNAVAILABLE, UNKNOWN, OFF, ALL, ONE }
 /** One read-only picture of the player state, shared by the widget and the panel. */
 data class NowPlaying(
     val app: MusicApp?,
-    val mode: String,
+    /** YouTube Music picks, Apple Music plays ([Relay]). */
+    val relay: Boolean,
     val hasAccess: Boolean,
     val hasSession: Boolean = false,
     val title: String = "",
@@ -40,7 +41,7 @@ data class NowPlaying(
 
     /** Fields that change what the widget shows (position is handled separately). */
     fun widgetSignature(): String = listOf(
-        hasAccess, hasSession, mode, app?.pkg, title, artist, isPlaying,
+        hasAccess, hasSession, relay, app?.pkg, title, artist, isPlaying,
         shuffle, repeat, durationMs, System.identityHashCode(art),
     ).joinToString("|")
 }

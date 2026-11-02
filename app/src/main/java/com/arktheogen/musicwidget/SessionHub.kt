@@ -27,10 +27,9 @@ import java.util.concurrent.CopyOnWriteArraySet
  */
 @MainThread
 object SessionHub {
-    const val AUTO = "auto"
     private const val PREFS = "session_hub"
-    private const val KEY_MODE = "mode"
     private const val KEY_LAST = "last_pkg"
+    private const val AM = "com.apple.android.music"
     private const val DISPATCH_DELAY_MS = 60L
 
     fun interface Listener {
@@ -101,16 +100,12 @@ object SessionHub {
         reselect()
     }
 
-    /** Chooses which session the widget shows, based on the user's mode. */
+    /** Chooses which session the widget shows: Apple Music while the relay is on, else whatever plays. */
     private fun reselect() {
-        val mode = mode()
-        val chosen = if (mode == AUTO) {
-            trackers.firstOrNull { it.isPlaying }
-                ?: current?.takeIf { it in trackers } // keep the paused one, don't jump around
-                ?: trackers.firstOrNull()
-        } else {
-            trackers.firstOrNull { it.pkg == mode }
-        }
+        val chosen = trackers.firstOrNull { Relay.isOn && it.pkg == AM }
+            ?: trackers.firstOrNull { it.isPlaying }
+            ?: current?.takeIf { it in trackers } // keep the paused one, don't jump around
+            ?: trackers.firstOrNull()
         if (chosen != null && chosen.pkg != prefs.getString(KEY_LAST, null)) {
             prefs.edit().putString(KEY_LAST, chosen.pkg).apply()
         }
@@ -122,34 +117,14 @@ object SessionHub {
 
     private val dispatch = Runnable { listeners.forEach { it.onNowPlayingChanged() } }
 
-    // ---------------------------------------------------------------- mode / switch
+    // ---------------------------------------------------------------- relay / open
 
-    fun mode(): String = prefs.getString(KEY_MODE, AUTO) ?: AUTO
-
-    fun setMode(mode: String) {
-        prefs.edit().putString(KEY_MODE, mode).apply()
-        reselect()
-    }
-
-    private fun hasSessionFor(pkg: String) = trackers.any { it.pkg == pkg }
-
-    /** Follow [pkg] (or AUTO). Opens the app if it isn't running yet. */
-    fun select(ctx: Context, pkg: String) {
-        setMode(pkg)
-        if (pkg != AUTO && !hasSessionFor(pkg)) openApp(ctx, pkg)
-    }
-
-    /** Auto → each installed app → Auto. Never launches apps (that would be noisy). */
-    fun cycleMode(ctx: Context): String {
-        val order = listOf(AUTO) + MusicApps.installed(ctx).map { it.pkg }
-        val next = order[(order.indexOf(mode()) + 1) % order.size]
-        setMode(next)
-        return next
-    }
+    /** The relay switched on or off: redraw (and show Apple Music while it's on). */
+    fun relayChanged() = reselect()
 
     /** The app a "play" tap should open when nothing is running. */
     fun targetPackage(): String? =
-        current?.pkg ?: mode().takeIf { it != AUTO } ?: prefs.getString(KEY_LAST, null)
+        current?.pkg ?: prefs.getString(KEY_LAST, null)
 
     fun openApp(ctx: Context, pkg: String? = targetPackage()): Boolean {
         val target = pkg ?: MusicApps.installed(ctx).firstOrNull()?.pkg ?: return false
@@ -220,7 +195,7 @@ object SessionHub {
         val t = current
         val base = NowPlaying(
             app = MusicApps.byPkg(t?.pkg ?: targetPackage()),
-            mode = mode(),
+            relay = Relay.isOn,
             hasAccess = hasAccess(appCtx),
         )
         if (t == null) return base

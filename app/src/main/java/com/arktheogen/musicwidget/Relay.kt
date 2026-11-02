@@ -88,10 +88,16 @@ object Relay {
 
     // ------------------------------------------------------------------ start / stop
 
-    /** [fastTest] jumps each song near its end, to test many handoffs quickly. */
-    fun start(activity: Activity, fastTest: Boolean) {
+    /**
+     * [fastTest] jumps each song near its end, to test many handoffs quickly.
+     * Returns why it couldn't start, or null when it started.
+     */
+    fun start(activity: Activity, fastTest: Boolean): String? {
         ctx = activity.applicationContext
-        if (isOn) return log("already on")
+        if (isOn) return null
+        if (!MusicApps.isInstalled(ctx, AM) || !MusicApps.isInstalled(ctx, YT)) {
+            return ctx.getString(R.string.relay_needs_apps).also { log(it) }
+        }
         load()
         fast = fastTest
         val yt = session(YT)
@@ -100,8 +106,9 @@ object Relay {
             if (yt.playbackState?.state == PlaybackState.STATE_PLAYING) yt.transportControls.pause()
             log("YouTube Music: +$added picks (our list ${items.size}, now at ${pos + 1})")
         }
-        if (items.isEmpty()) return log("play a song in YouTube Music first")
+        if (items.isEmpty()) return ctx.getString(R.string.relay_needs_pick).also { log(it) }
         isOn = true
+        SessionHub.relayChanged()
         log("ON${if (fast) " (fast test: each song jumps to ${FAST_TAIL_MS / 1000} s before its end)" else ""}; " +
             "country ${AppleCatalog.country(ctx)}; prepare-ahead ${if (prepareWorks) "on" else "off (it cut songs short)"}")
         // The next unplayed pick (a new YouTube Music list starts with its current song); else replay the last.
@@ -111,9 +118,19 @@ object Relay {
             log("Apple Music isn't loaded: opening it")
             SessionHub.openApp(activity, AM)
             waitForApple(firstIdx, tries = 30)
-            return
+            return null
         }
         playIdx(firstIdx, forward = true)
+        return null
+    }
+
+    /** The badge tap: switches the relay and returns what to tell the owner. */
+    fun toggle(activity: Activity): String {
+        if (isOn) {
+            stop("turned off by you")
+            return activity.getString(R.string.relay_off)
+        }
+        return start(activity, fastTest = false) ?: activity.getString(R.string.relay_on)
     }
 
     fun stop(reason: String) {
@@ -126,6 +143,7 @@ object Relay {
         pendingIdx = -1
         save()
         log("OFF: $reason")
+        SessionHub.relayChanged()
     }
 
     private fun waitForApple(idx: Int, tries: Int) {
@@ -146,6 +164,7 @@ object Relay {
             am?.unregisterCallback(appleCallback)
             am = s
             s.registerCallback(appleCallback, main)
+            logAutoplay(s)
         }
         return s.playbackState?.state.let { it != null && it != PlaybackState.STATE_NONE }
     }
@@ -463,6 +482,18 @@ object Relay {
         endsAt = SystemClock.elapsedRealtime() + left
         main.postDelayed(endTask, (left - HANDOFF_EARLY_MS).coerceAtLeast(0))
         if (prepareWorks && left > PREPARE_AHEAD_MS) main.postDelayed(prepareTask, left - PREPARE_AHEAD_MS)
+    }
+
+    /**
+     * Apple Music offers an "Autoplay" button to other apps. Turning it off would stop its own
+     * autoplay racing our next pick, but pressing it blind could turn it on, so first we log
+     * what it reports (its extras and icon may say whether it's on).
+     */
+    private fun logAutoplay(c: MediaController) {
+        val a = c.playbackState?.customActions?.firstOrNull { it.name?.toString().equals("Autoplay", true) }
+            ?: return log("Apple Music: no Autoplay button")
+        val extras = a.extras?.let { b -> b.keySet().joinToString { k -> "$k=${b.get(k)}" } } ?: "none"
+        log("Apple Music Autoplay button: action=${a.action}, icon=${a.icon}, extras: $extras")
     }
 
     private fun positionNow(s: PlaybackState): Long {

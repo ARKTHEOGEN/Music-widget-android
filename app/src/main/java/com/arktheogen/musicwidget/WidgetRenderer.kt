@@ -31,7 +31,6 @@ object WidgetRenderer {
         SizeF(220f, 110f) to R.layout.widget_medium,
         SizeF(200f, 220f) to R.layout.widget_large,
     )
-    private val CHIP_IDS = intArrayOf(R.id.chip_0, R.id.chip_1, R.id.chip_2)
     private const val SEEK_TOLERANCE_MS = 1500L
 
     private var lastSignature: String? = null
@@ -89,19 +88,12 @@ object WidgetRenderer {
         v.setImageViewResource(R.id.btn_repeat, if (np.repeat == Repeat.ONE) R.drawable.ic_repeat_one else R.drawable.ic_repeat)
         v.setInt(R.id.btn_repeat, "setImageAlpha", alphaFor(np.repeat))
 
-        // Source app badge + switcher chips
+        // Badge: the app the song plays in; ringed while the relay is on (tap = relay on/off)
         val badge = np.app?.let { appIcon(ctx, it.pkg) }
         if (badge != null) v.setImageViewBitmap(R.id.app_badge, badge)
         else v.setImageViewResource(R.id.app_badge, R.drawable.ic_music_note)
-        v.setInt(R.id.chip_auto, "setBackgroundResource", if (np.mode == SessionHub.AUTO) R.drawable.chip_selected else 0)
-        MusicApps.ALL.forEachIndexed { i, app ->
-            val id = CHIP_IDS[i]
-            val icon = appIcon(ctx, app.pkg) // null = not installed: hide its chip
-            v.setViewVisibility(id, if (icon != null) View.VISIBLE else View.GONE)
-            if (icon == null) return@forEachIndexed
-            v.setImageViewBitmap(id, icon)
-            v.setInt(id, "setBackgroundResource", if (np.mode == app.pkg) R.drawable.chip_selected else 0)
-        }
+        v.setInt(R.id.app_badge, "setBackgroundResource", if (np.relay) R.drawable.chip_selected else 0)
+        v.setContentDescription(R.id.app_badge, ctx.getString(if (np.relay) R.string.cd_relay_on else R.string.cd_relay_off))
 
         setClicks(ctx, v, np)
         return v
@@ -112,7 +104,7 @@ object WidgetRenderer {
             val setup = activity(ctx, 1, Intent(ctx, MainActivity::class.java))
             listOf(android.R.id.background, R.id.art, R.id.btn_play, R.id.btn_next, R.id.btn_prev,
                 R.id.btn_shuffle, R.id.btn_repeat, R.id.btn_lyrics, R.id.app_badge, R.id.text_area,
-                R.id.chip_auto, *CHIP_IDS.toTypedArray()).forEach { v.setOnClickPendingIntent(it, setup) }
+            ).forEach { v.setOnClickPendingIntent(it, setup) }
             return
         }
         val panel = activity(ctx, 2, panelIntent(ctx, lyrics = false))
@@ -130,11 +122,7 @@ object WidgetRenderer {
         v.setOnClickPendingIntent(R.id.btn_shuffle, broadcast(ctx, WidgetActionReceiver.SHUFFLE))
         v.setOnClickPendingIntent(R.id.btn_repeat, broadcast(ctx, WidgetActionReceiver.REPEAT))
 
-        v.setOnClickPendingIntent(R.id.app_badge, activity(ctx, 5, SwitchActivity.cycleIntent(ctx)))
-        v.setOnClickPendingIntent(R.id.chip_auto, activity(ctx, 10, SwitchActivity.selectIntent(ctx, SessionHub.AUTO)))
-        MusicApps.ALL.forEachIndexed { i, app ->
-            v.setOnClickPendingIntent(CHIP_IDS[i], activity(ctx, 11 + i, SwitchActivity.selectIntent(ctx, app.pkg)))
-        }
+        v.setOnClickPendingIntent(R.id.app_badge, activity(ctx, 5, SwitchActivity.relayIntent(ctx)))
     }
 
     private fun alphaFor(t: Toggle) = when (t) {

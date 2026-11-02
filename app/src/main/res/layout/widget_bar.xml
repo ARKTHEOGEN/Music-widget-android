@@ -59,7 +59,7 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/cd_switch_app"
+            android:contentDescription="@string/cd_relay_off"
             android:padding="6dp"
             android:src="@drawable/ic_music_note" />
         <ImageView
