@@ -13,6 +13,8 @@ import android.util.TypedValue
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
+import android.view.animation.PathInterpolator
+import android.view.animation.LinearInterpolator
 import android.view.ViewConfiguration
 import android.view.WindowInsets
 import android.widget.FrameLayout
@@ -57,6 +59,9 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
     private val ticker = Handler(Looper.getMainLooper())
     private var np: NowPlaying? = null
     private var shownArt: Bitmap? = null
+    /** After a swipe: the song we swiped away from, and where the next art slides in from (0 = none). */
+    private var swipeFromKey: String? = null
+    private var slideInFrom = 0f
     private var userSeeking = false
     private var cardBottomPadding = 0
 
@@ -106,6 +111,13 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         SessionHub.removeListener(this)
         ticker.removeCallbacks(tick)
         ticker.removeCallbacks(retryLyrics)
+        // Closed mid-swipe: put the art back so it's there when the panel opens again.
+        ticker.removeCallbacks(slideIn)
+        slideInFrom = 0f
+        swipeFromKey = null
+        artFrame.animate().cancel()
+        artFrame.translationX = 0f
+        artFrame.visibility = View.VISIBLE
     }
 
     // ---------------------------------------------------------------- setup
@@ -202,6 +214,10 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
             shownArt = state.art
             if (state.art != null) art.setImageBitmap(state.art) else art.setImageResource(R.drawable.art_placeholder)
             applyColors(Artwork.lookFor(this, state.art))
+        }
+        if (slideInFrom != 0f && state.trackKey != swipeFromKey && state.art != null) {
+            ticker.removeCallbacks(slideIn)
+            slideIn.run()
         }
 
         btnPlay.setImageResource(if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play)
@@ -417,17 +433,37 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
         card.animate().translationY(card.height.toFloat()).setDuration(180).withEndAction { finish() }.start()
     }
 
+    /**
+     * Plain slide: the art leaves the way it was dragged, stays out of sight until the next
+     * song's art has arrived (the app can take a few seconds), then slides in from the other side.
+     */
     private fun swipeTrack(v: View, toNext: Boolean) {
         val out = if (toNext) -v.width.toFloat() else v.width.toFloat()
-        v.animate().translationX(out).alpha(0f).rotation(0f).setDuration(150).withEndAction {
-            if (toNext) SessionHub.next() else SessionHub.previous()
-            v.translationX = -out
-            v.animate().translationX(0f).alpha(1f).setDuration(200).start()
-        }.start()
+        val remaining = abs(out - v.translationX) / v.width
+        swipeFromKey = np?.trackKey
+        slideInFrom = -out
+        v.animate().translationX(out).setInterpolator(LinearInterpolator())
+            .setDuration((SLIDE_OUT_MS * remaining).toLong().coerceAtLeast(60)).withLayer()
+            .withEndAction {
+                v.visibility = View.INVISIBLE
+                if (toNext) SessionHub.next() else SessionHub.previous()
+                ticker.postDelayed(slideIn, SLIDE_IN_TIMEOUT_MS)
+            }.start()
+    }
+
+    /** Next song's art is showing (or we waited long enough): bring it in. */
+    private val slideIn = Runnable {
+        if (slideInFrom == 0f) return@Runnable
+        val v = artFrame
+        v.translationX = slideInFrom
+        slideInFrom = 0f
+        swipeFromKey = null
+        v.visibility = View.VISIBLE
+        v.animate().translationX(0f).setInterpolator(DECELERATE).setDuration(SLIDE_IN_MS).withLayer().start()
     }
 
     private fun springBack(v: View) {
-        v.animate().translationX(0f).alpha(1f).rotation(0f).setDuration(180).start()
+        v.animate().translationX(0f).setInterpolator(DECELERATE).setDuration(180).withLayer().start()
     }
 
     /** Horizontal drag moves the art with your finger; release past 25% width skips. */
@@ -471,11 +507,7 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
                             else scrolling = true
                         }
                     }
-                    if (dragging) {
-                        v.translationX = dx
-                        v.rotation = dx / v.width * 6f
-                        v.alpha = 1f - min(0.6f, abs(dx) / v.width)
-                    }
+                    if (dragging) v.translationX = dx
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     val dx = e.rawX - downX
@@ -515,6 +547,11 @@ class PlayerPanelActivity : Activity(), SessionHub.Listener {
 
     companion object {
         const val EXTRA_SHOW_LYRICS = "show_lyrics"
+        private const val SLIDE_OUT_MS = 220L
+        private const val SLIDE_IN_MS = 260L
+        /** Longest wait for the next song's art before sliding in whatever is there. */
+        private const val SLIDE_IN_TIMEOUT_MS = 6_000L
+        private val DECELERATE = PathInterpolator(0f, 0f, 0.2f, 1f)
         private const val BUSY_RETRY_MS = 20_000L
     }
 }
