@@ -91,6 +91,12 @@ Each test pauses the source app, waits up to 15 s for the target to play, grades
 - **Search via Apple Music's session failed:** Apple Music was idle and frozen by Android (`state=NONE`, log shows "unfroze com.apple.android.music"); it ignored the command. A sleeping Apple Music must be launched, not just sent a session command. Retry with Apple Music force-stopped (so the intent path is used) is **pending**.
 - Link test: **not run yet** (taps landed while the Search test was still running).
 - Reverse direction (Apple Music → YouTube Music): not run yet.
+- Retry: YouTube Music → Apple Music **Search worked** once Apple Music's player was loaded (session play-from-search, 3.1 s, EXACT, seek OK). **Link only opens the song page** (no playback). Session search to an idle Apple Music (`state=NONE`) is ignored.
+- **Relay test (`RelayTest.kt`, `f6bb762`), 3 songs: works end to end.** Owner heard all three in Apple Music. Findings:
+  - Picks start in Apple Music by session search in 0.5–6 s; 2 of 3 graded EXACT.
+  - Song 2 race: our pick arrived after Apple Music's own autoplay had started its next song ("Money in the Bank"); our pick then replaced it. The test mistook the autoplay song for ours. Fix: confirm by title, and hand over earlier or pause Apple Music before its autoplay.
+  - `skipToQueueItem` on a paused YouTube Music **makes it start playing** after 1.3–2.3 s; the test paused it. Need a quieter way to move its place.
+  - YouTube Music's list **shrank** (16 → 13) with **no new picks** over 3 steps. Unknown whether it refills near the end of the list.
 
 **Open questions the report must answer:**
 1. Does **Apple Music on Android** accept play-from-search (intent or session)?
