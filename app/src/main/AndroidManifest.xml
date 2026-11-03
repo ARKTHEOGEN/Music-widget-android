@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Lyrics lookup (LRCLIB). -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Side Panel: auto brightness and the brightness slider ("Modify system settings", granted by the owner). -->
+    <uses-permission
+        android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
 
     <!-- Lets us see/launch the three music apps (Android 11+ package visibility). -->
     <queries>
@@ -72,6 +78,64 @@
 
         <receiver
             android:name=".WidgetActionReceiver"
+            android:exported="false" />
+
+        <!-- ===== Side Panel: lock, quick pop-up, brightness, tap zone ===== -->
+        <activity
+            android:name=".SidePanelSetupActivity"
+            android:exported="false"
+            android:label="@string/side_setup_title" />
+
+        <activity
+            android:name=".QuickPanelActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/Theme.MusicWidget.Sheet" />
+
+        <!-- The accessibility button opens the quick pop-up; performs lock (like the power button,
+             fingerprint/face unlock keep working), screenshot, home, back and other system actions,
+             and runs Side Panel's own auto brightness. -->
+        <service
+            android:name=".LockService"
+            android:exported="false"
+            android:label="@string/service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/lock_service" />
+        </service>
+
+        <receiver
+            android:name=".SidePanelWidget"
+            android:exported="true"
+            android:label="@string/side_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/side_panel_widget" />
+        </receiver>
+
+        <receiver
+            android:name=".TapZoneWidget"
+            android:exported="true"
+            android:label="@string/tapzone_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/tapzone_widget" />
+        </receiver>
+
+        <receiver
+            android:name=".SidePanelReceiver"
             android:exported="false" />
     </application>
 </manifest>

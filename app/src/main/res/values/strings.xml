@@ -91,4 +91,58 @@
     <string name="diag_refresh">Refresh</string>
     <string name="diag_copy">Copy report</string>
     <string name="diag_copied">Report copied</string>
+
+    <!-- Side Panel: lock, pop-up, brightness, tap zone (merged from the Side Panel app). -->
+    <string name="side_widget_label">Side Panel</string>
+    <string name="side_widget_description">Lock the screen and control volume from the home screen.</string>
+    <string name="service_label">Side Panel lock button</string>
+    <string name="service_description">Opens the Side Panel pop-up from the accessibility button, and lets Side Panel lock the screen (like the power button, so fingerprint and face unlock still work), take screenshots and go Home, Back or to Recents for you. It doesn\'t read anything on your screen.</string>
+
+    <string name="tapzone_label">Double-tap to lock</string>
+    <string name="tapzone_description">Invisible. Stretch it over empty home-screen space; double-tap it to lock.</string>
+    <string name="tapzone_hint">Double-tap here to lock</string>
+    <string name="cd_lock">Lock screen</string>
+    <string name="cd_mute">Mute or unmute</string>
+    <string name="cd_slider">Media volume</string>
+    <string name="cd_tray">Volume panel</string>
+    <string name="cd_menu">Open the Side Panel pop-up</string>
+    <string name="t_lock">Lock</string>
+    <string name="t_screenshot">Screenshot</string>
+    <string name="t_notifications">Notifications</string>
+    <string name="t_quick_settings">Quick settings</string>
+    <string name="t_home">Home</string>
+    <string name="t_back">Back</string>
+    <string name="t_recents">Recents</string>
+    <string name="t_power">Power menu</string>
+    <string name="t_torch">Flashlight</string>
+    <string name="t_qr">QR scanner</string>
+    <string name="t_split">Split screen</string>
+    <string name="t_apps">All apps</string>
+    <string name="t_auto_brightness">Auto brightness</string>
+    <string name="cd_auto_on">Auto brightness on. Tap to turn off</string>
+    <string name="cd_auto_off">Auto brightness off. Tap to turn on</string>
+    <string name="cd_brightness">Screen brightness</string>
+    <string name="need_write_settings">Allow “Modify system settings” for Side Panel to change brightness</string>
+    <string name="step_brightness_title">2. Allow brightness control</string>
+    <string name="step_brightness_body">For the auto-brightness button and the brightness slider, allow “Modify system settings”.</string>
+    <string name="brightness_ready">✓ Brightness control allowed</string>
+    <string name="brightness_not_ready">✗ Brightness control not allowed</string>
+    <string name="btn_allow_brightness">Allow brightness control</string>
+    <string name="no_torch">No flashlight found</string>
+    <string name="torch_busy">The camera is in use</string>
+    <string name="no_qr">No QR scanner found</string>
+    <string name="lock_off">Turn on the lock in Side Panel first (open the app).</string>
+
+    <string name="side_setup_title">Side Panel</string>
+    <string name="step_lock_title">1. Turn on the lock button</string>
+    <string name="step_lock_body">Android lets an app lock the screen only through an accessibility service. Tap below, then under “Downloaded apps” open “Side Panel lock button” and switch it on.</string>
+    <string name="btn_enable">Open Accessibility settings</string>
+    <string name="find_service">Tap “Side Panel lock button” (under Downloaded apps) and switch it on</string>
+    <string name="lock_ready">✓ Lock button is on</string>
+    <string name="lock_not_ready">✗ Lock button is off</string>
+    <string name="side_step_widget_title">3. Add the widget</string>
+    <string name="side_step_widget_body">Place it in the right-most column. Buttons: lock, auto brightness, QR scanner, and the pop-up (volume and brightness sliders, shortcuts). The accessibility button opens the same pop-up.</string>
+    <string name="btn_add">Add widget to home screen</string>
+
+    <string name="btn_side_setup">Side Panel setup (lock, brightness, pop-up)</string>
 </resources>

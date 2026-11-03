@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Reads nothing on screen: it only listens to our own app (packageNames), so it costs no battery. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeAnnouncement"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagRequestAccessibilityButton"
+    android:canRetrieveWindowContent="false"
+    android:description="@string/service_description"
+    android:notificationTimeout="1000"
+    android:packageNames="com.arktheogen.musicwidget" />

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.arktheogen.musicwidget.Sheet
+        android:id="@+id/sheet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/sheet_bg"
+        android:gravity="center_horizontal"
+        android:maxWidth="480dp"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="16dp">
+
+        <View
+            android:layout_width="36dp"
+            android:layout_height="4dp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/handle_bg" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <ImageButton
+                android:id="@+id/btn_mute"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/tile_bg"
+                android:contentDescription="@string/cd_mute"
+                android:padding="12dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_volume_mute" />
+            <SeekBar
+                android:id="@+id/slider"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/cd_slider"
+                android:progressBackgroundTint="@color/text2"
+                android:progressTint="@color/accent"
+                android:thumbTint="@color/accent" />
+            <ImageButton
+                android:id="@+id/btn_tray"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/tile_bg"
+                android:contentDescription="@string/cd_tray"
+                android:padding="12dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_volume_up" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <ImageButton
+                android:id="@+id/btn_auto"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/tile_bg"
+                android:contentDescription="@string/t_auto_brightness"
+                android:padding="12dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_brightness_auto" />
+            <SeekBar
+                android:id="@+id/brightness"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/cd_brightness"
+                android:max="1000"
+                android:progressBackgroundTint="@color/text2"
+                android:progressTint="@color/accent"
+                android:thumbTint="@color/accent" />
+            <!-- Same width as the volume row's right button, so both sliders line up. -->
+            <View
+                android:layout_width="48dp"
+                android:layout_height="48dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/grid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </com.arktheogen.musicwidget.Sheet>
+</FrameLayout>

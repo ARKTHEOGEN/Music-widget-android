@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/side_setup_title"
+            android:textAppearance="?android:attr/textAppearanceLarge" />
+        <TextView style="@style/Heading" android:text="@string/step_lock_title" />
+        <TextView style="@style/Body" android:text="@string/step_lock_body" />
+        <TextView android:id="@+id/lock_status" style="@style/Body" android:textStyle="bold" />
+        <Button android:id="@+id/btn_enable" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/btn_enable" />
+        <TextView style="@style/Body" android:text="@string/restricted_note" />
+        <Button android:id="@+id/btn_app_info" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/btn_app_info" />
+        <TextView style="@style/Heading" android:text="@string/step_brightness_title" />
+        <TextView style="@style/Body" android:text="@string/step_brightness_body" />
+        <TextView android:id="@+id/brightness_status" style="@style/Body" android:textStyle="bold" />
+        <Button android:id="@+id/btn_brightness" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/btn_allow_brightness" />
+        <TextView style="@style/Heading" android:text="@string/side_step_widget_title" />
+        <TextView style="@style/Body" android:text="@string/side_step_widget_body" />
+        <Button android:id="@+id/btn_add" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/btn_add" />
+    </LinearLayout>
+</ScrollView>

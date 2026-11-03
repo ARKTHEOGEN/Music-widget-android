@@ -32,6 +32,9 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.btn_open_player).setOnClickListener {
             startActivity(Intent(this, PlayerPanelActivity::class.java))
         }
+        findViewById<View>(R.id.btn_side_setup).setOnClickListener {
+            startActivity(Intent(this, SidePanelSetupActivity::class.java))
+        }
         findViewById<View>(R.id.btn_diagnostics).setOnClickListener {
             startActivity(Intent(this, DiagnosticsActivity::class.java))
         }

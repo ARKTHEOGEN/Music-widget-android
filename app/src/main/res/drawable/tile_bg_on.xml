@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A switched-on tile (widgets can't use the selected state, so it's a separate drawable). -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/handle">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/tile_on" />
+            <corners android:radius="18dp" />
+        </shape>
+    </item>
+</ripple>

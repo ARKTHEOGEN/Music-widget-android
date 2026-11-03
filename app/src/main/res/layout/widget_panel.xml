@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Semi-transparent strip for the right edge; colours follow the system theme. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/panel_bg"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <ImageView
+        android:id="@+id/btn_lock"
+        style="@style/Tile"
+        android:contentDescription="@string/cd_lock"
+        android:src="@drawable/ic_lock" />
+
+    <ImageView
+        android:id="@+id/btn_brightness"
+        style="@style/Tile"
+        android:contentDescription="@string/t_auto_brightness"
+        android:src="@drawable/ic_brightness_auto" />
+
+    <ImageView
+        android:id="@+id/btn_qr"
+        style="@style/Tile"
+        android:contentDescription="@string/t_qr"
+        android:src="@drawable/ic_qr" />
+
+    <ImageView
+        android:id="@+id/btn_menu"
+        style="@style/Tile"
+        android:contentDescription="@string/cd_menu"
+        android:src="@drawable/ic_touch" />
+</LinearLayout>
