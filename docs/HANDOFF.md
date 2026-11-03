@@ -117,6 +117,13 @@ Each test pauses the source app, waits up to 15 s for the target to play, grades
 - **Fast test 2 (after the artist-match fix):** 26 played, **0 failed**, 2 skipped on purpose ("Rasika Rasika": not on Apple Music; "Oru Murai Iru Murai": artist "Various Artist"). Gap 1.6–5.8 s, median 3.3 s (Apple Music's load time; our request is the same). **Refill: +24 picks, no skip, owner heard nothing.**
 - **Step 2 (`774383e`, `165259a`): badge replaces the app chips.** Tap the badge (widget or pop-up) = relay on/off; ringed while on; pop-up reads "Apple Music · YouTube Music picks". App modes (Auto/Apple/YouTube) removed from `SessionHub`. Owner confirmed it works.
   - **Apple Music autoplay:** custom action `com.apple.android.music.playback.action.ACTION_ENABLE_CONTINUOUS_PLAYBACK`, extra `..._ARG_ENABLED`. The extra is what a press would set: it read `false` while autoplay was on. Sending it with `ARG_ENABLED=false` switches autoplay off (extra then reads `true`); `true` switches it back. The relay does this on start and restores it on stop. Confirmed twice in the log.
+- **Step 3 (`24dedc5`, `7b42ee0`): info view (ⓘ).** Song details (iTunes lookup), artist photos (Deezer) and 3-line bios (Wikipedia, music pages only), audio chain from Apple Music's session extras (`PLAYBACK_STATE_EXTRA_PLAYBACK_FORMAT_*`: codec, bit depth, sample rate, bit rate, channels; `AUDIO_VARIANT` read 2 for 24/44.1 lossless and 3 for 24/192 hi-res). Owner confirmed it looks right.
+- **Bit-perfect findings (DD HiFi DAC Pro over USB, measured with `dumpsys media.audio_flinger` over wireless adb):**
+  - DAC profiles: 16/24-bit and float up to 192 kHz; 32-bit up to 96 kHz.
+  - Apple Music hi-res track: ALAC 24-bit / 192 kHz, 4,996 kbps; Apple's AudioTrack runs at 192 kHz, deep buffer.
+  - Android opened the USB output as a normal **MIXER thread at 96 kHz, 32-bit** → 192 kHz is **resampled to 96 kHz**; not bit-perfect. On the speaker, everything is mixed at 48 kHz float.
+  - Only the playing app can request Android 14+'s bit-perfect USB mode (`setPreferredMixerAttributes`, applies to the caller's own uid); Apple Music doesn't. Our app can't change it.
+  - MusicKit (third-party Apple access) gives AAC 256 kbps only, so the US$99 route would be worse. Extracting Apple's decrypted audio = getting around its encryption (FairPlay): refused (illegal, Copyright Act s.65A).
 
 **Open questions the report must answer:**
 1. Does **Apple Music on Android** accept play-from-search (intent or session)?
